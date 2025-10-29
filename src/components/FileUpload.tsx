@@ -57,22 +57,19 @@ export const FileUpload = () => {
       const startTime = Date.now();
       const fileSizeMB = file.size / (1024 * 1024);
 
-      // Realistic progress simulation
+      // Fast progress animation
       const progressInterval = setInterval(() => {
         setProgress((prev) => {
-          if (prev >= 90) return prev;
-          const increment = Math.random() * 15 + 5;
-          return Math.min(prev + increment, 90);
+          if (prev >= 95) return prev;
+          return Math.min(prev + 25, 95);
         });
 
-        // Calculate current speed
         const elapsed = (Date.now() - startTime) / 1000;
         if (elapsed > 0) {
-          const uploadedMB = (progress / 100) * fileSizeMB;
-          const speed = uploadedMB / elapsed;
+          const speed = fileSizeMB / elapsed;
           setUploadSpeed(speed);
         }
-      }, 300);
+      }, 100);
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
@@ -83,7 +80,7 @@ export const FileUpload = () => {
         });
 
       clearInterval(progressInterval);
-      setProgress(95);
+      setProgress(98);
 
       if (uploadError) throw uploadError;
 
