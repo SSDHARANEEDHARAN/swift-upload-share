@@ -13,6 +13,7 @@ export const FileUpload = () => {
   const [shareLink, setShareLink] = useState("");
   const [copied, setCopied] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadSpeed, setUploadSpeed] = useState(0);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -47,21 +48,39 @@ export const FileUpload = () => {
 
     setUploading(true);
     setProgress(0);
+    setUploadSpeed(0);
 
     try {
-      // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 10, 90));
-      }, 200);
-
-      const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${file.name}`;
       const filePath = `${fileName}`;
+
+      const startTime = Date.now();
+      const fileSizeMB = file.size / (1024 * 1024);
+
+      // Realistic progress simulation
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) return prev;
+          const increment = Math.random() * 15 + 5;
+          return Math.min(prev + increment, 90);
+        });
+
+        // Calculate current speed
+        const elapsed = (Date.now() - startTime) / 1000;
+        if (elapsed > 0) {
+          const uploadedMB = (progress / 100) * fileSizeMB;
+          const speed = uploadedMB / elapsed;
+          setUploadSpeed(speed);
+        }
+      }, 300);
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('transfers')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       clearInterval(progressInterval);
       setProgress(95);
@@ -144,7 +163,7 @@ export const FileUpload = () => {
                     Drop your file here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Maximum file size: 50MB
+                    Maximum file size: 100MB
                   </p>
                 </div>
               )}
@@ -155,9 +174,14 @@ export const FileUpload = () => {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Uploading...</span>
-                <span className="font-semibold text-primary">{progress}%</span>
+                <span className="font-semibold text-primary">{Math.round(progress)}%</span>
               </div>
               <Progress value={progress} className="h-2" />
+              {uploadSpeed > 0 && (
+                <p className="text-xs text-muted-foreground text-right">
+                  {uploadSpeed.toFixed(2)} MB/s
+                </p>
+              )}
             </div>
           )}
 
