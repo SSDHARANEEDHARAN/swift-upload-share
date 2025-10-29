@@ -17,6 +17,12 @@ const Download = () => {
     loadFileData();
   }, [token]);
 
+  useEffect(() => {
+    if (fileData && !downloading) {
+      downloadFile();
+    }
+  }, [fileData]);
+
   const loadFileData = async () => {
     try {
       const { data, error } = await supabase
