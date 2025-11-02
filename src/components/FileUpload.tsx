@@ -8,13 +8,14 @@ import { toast } from "sonner";
 import QRCode from "react-qr-code";
 
 export const FileUpload = () => {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [shareLink, setShareLink] = useState("");
   const [copied, setCopied] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadSpeed, setUploadSpeed] = useState(0);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -29,80 +30,92 @@ export const FileUpload = () => {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      setFile(droppedFile);
+    const droppedFiles = Array.from(e.dataTransfer.files).slice(0, 10);
+    if (droppedFiles.length > 0) {
+      setFiles(droppedFiles);
       setShareLink("");
     }
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
+    const selectedFiles = e.target.files ? Array.from(e.target.files).slice(0, 10) : [];
+    if (selectedFiles.length > 0) {
+      setFiles(selectedFiles);
       setShareLink("");
     }
   };
 
   const uploadFile = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
 
     setUploading(true);
     setProgress(0);
     setUploadSpeed(0);
+    setCurrentFileIndex(0);
 
     try {
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `${fileName}`;
-
+      const batchId = crypto.randomUUID();
+      const shareToken = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+      const totalSizeMB = totalSize / (1024 * 1024);
       const startTime = Date.now();
-      const fileSizeMB = file.size / (1024 * 1024);
 
       // Fast progress animation
       const progressInterval = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 95) return prev;
-          return Math.min(prev + 25, 95);
+          return Math.min(prev + 15, 95);
         });
 
         const elapsed = (Date.now() - startTime) / 1000;
         if (elapsed > 0) {
-          const speed = fileSizeMB / elapsed;
+          const speed = totalSizeMB / elapsed;
           setUploadSpeed(speed);
         }
       }, 100);
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('transfers')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      // Upload all files
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setCurrentFileIndex(i + 1);
+        
+        const fileName = `${Date.now()}_${i}_${file.name}`;
+        const filePath = `${fileName}`;
+
+        // Upload to storage
+        const { error: uploadError } = await supabase.storage
+          .from('transfers')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Insert file metadata with shared batch_id and share_token
+        const { error: dbError } = await supabase
+          .from('files')
+          .insert({
+            filename: file.name,
+            file_size: file.size,
+            file_type: file.type,
+            storage_path: filePath,
+            batch_id: batchId,
+            share_token: shareToken,
+          });
+
+        if (dbError) throw dbError;
+      }
 
       clearInterval(progressInterval);
-      setProgress(98);
-
-      if (uploadError) throw uploadError;
-
-      // Insert file metadata
-      const { data: fileData, error: dbError } = await supabase
-        .from('files')
-        .insert({
-          filename: file.name,
-          file_size: file.size,
-          file_type: file.type,
-          storage_path: filePath,
-        })
-        .select()
-        .single();
-
-      if (dbError) throw dbError;
-
       setProgress(100);
-      const link = `${window.location.origin}/download/${fileData.share_token}`;
+      
+      const link = `${window.location.origin}/download/${shareToken}`;
       setShareLink(link);
-      toast.success("File uploaded successfully!");
+      toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
     } catch (error: any) {
       console.error('Upload error:', error);
       toast.error("Upload failed. Please try again.");
@@ -120,9 +133,10 @@ export const FileUpload = () => {
   };
 
   const reset = () => {
-    setFile(null);
+    setFiles([]);
     setShareLink("");
     setProgress(0);
+    setCurrentFileIndex(0);
   };
 
   return (
@@ -136,7 +150,7 @@ export const FileUpload = () => {
             className={`
               border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer
               ${isDragging ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-border hover:border-primary/50'}
-              ${file ? 'bg-muted/30' : ''}
+              ${files.length > 0 ? 'bg-muted/30' : ''}
             `}
           >
             <input
@@ -145,23 +159,34 @@ export const FileUpload = () => {
               className="hidden"
               id="file-input"
               disabled={uploading}
+              multiple
             />
             <label htmlFor="file-input" className="cursor-pointer">
-              <Upload className={`w-16 h-16 mx-auto mb-4 ${file ? 'text-primary' : 'text-muted-foreground'}`} />
-              {file ? (
+              <Upload className={`w-16 h-16 mx-auto mb-4 ${files.length > 0 ? 'text-primary' : 'text-muted-foreground'}`} />
+              {files.length > 0 ? (
                 <div>
-                  <p className="text-lg font-semibold text-foreground mb-1">{file.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  <p className="text-lg font-semibold text-foreground mb-1">
+                    {files.length} file{files.length > 1 ? 's' : ''} selected
+                  </p>
+                  <div className="text-sm text-muted-foreground space-y-1 max-h-32 overflow-y-auto">
+                    {files.map((f, i) => (
+                      <div key={i} className="flex justify-between items-center">
+                        <span className="truncate max-w-[200px]">{f.name}</span>
+                        <span className="ml-2">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Total: {(files.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
               ) : (
                 <div>
                   <p className="text-lg font-semibold text-foreground mb-2">
-                    Drop your file here or click to browse
+                    Drop your files here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Maximum file size: 1GB
+                    Up to 10 files, 1GB each
                   </p>
                 </div>
               )}
@@ -171,7 +196,9 @@ export const FileUpload = () => {
           {uploading && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Uploading...</span>
+                <span className="text-muted-foreground">
+                  Uploading {currentFileIndex}/{files.length}...
+                </span>
                 <span className="font-semibold text-primary">{Math.round(progress)}%</span>
               </div>
               <Progress value={progress} className="h-2" />
@@ -185,18 +212,18 @@ export const FileUpload = () => {
 
           <Button
             onClick={uploadFile}
-            disabled={!file || uploading}
+            disabled={files.length === 0 || uploading}
             className="w-full h-12 text-base bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90 transition-opacity"
           >
             {uploading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Uploading...
+                Uploading {currentFileIndex}/{files.length}...
               </>
             ) : (
               <>
                 <Upload className="w-5 h-5 mr-2" />
-                Upload File
+                Upload {files.length > 0 ? `${files.length} File${files.length > 1 ? 's' : ''}` : 'Files'}
               </>
             )}
           </Button>

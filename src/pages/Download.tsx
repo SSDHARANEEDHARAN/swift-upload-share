@@ -28,18 +28,21 @@ const Download = () => {
       const { data, error } = await supabase
         .from('files')
         .select('*')
-        .eq('share_token', token)
-        .single();
+        .eq('share_token', token);
 
-      if (error || !data) {
+      if (error || !data || data.length === 0) {
         setError(true);
         return;
       }
 
-      // Check if file is expired
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      // Check if any file is expired
+      const anyExpired = data.some(file => 
+        file.expires_at && new Date(file.expires_at) < new Date()
+      );
+      
+      if (anyExpired) {
         setError(true);
-        toast.error("This file has expired");
+        toast.error("One or more files have expired");
         return;
       }
 
@@ -53,33 +56,41 @@ const Download = () => {
   };
 
   const downloadFile = async () => {
-    if (!fileData) return;
+    if (!fileData || fileData.length === 0) return;
 
     setDownloading(true);
     try {
-      const { data, error } = await supabase.storage
-        .from('transfers')
-        .download(fileData.storage_path);
+      // Download all files
+      for (const file of fileData) {
+        const { data, error } = await supabase.storage
+          .from('transfers')
+          .download(file.storage_path);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Create download link
-      const url = window.URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileData.filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+        // Create download link
+        const url = window.URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
 
-      // Update download count
-      await supabase
-        .from('files')
-        .update({ download_count: fileData.download_count + 1 })
-        .eq('id', fileData.id);
+        // Small delay between downloads
+        if (fileData.length > 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
 
-      toast.success("Download started!");
+        // Update download count
+        await supabase
+          .from('files')
+          .update({ download_count: file.download_count + 1 })
+          .eq('id', file.id);
+      }
+
+      toast.success(`${fileData.length} file${fileData.length > 1 ? 's' : ''} downloaded!`);
     } catch (err) {
       console.error('Download error:', err);
       toast.error("Download failed. Please try again.");
@@ -131,11 +142,21 @@ const Download = () => {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold mb-2">{fileData.filename}</h2>
+            <h2 className="text-2xl font-bold mb-2">
+              {fileData.length === 1 ? fileData[0].filename : `${fileData.length} Files`}
+            </h2>
+            <div className="space-y-2 max-h-40 overflow-y-auto mb-4">
+              {fileData.map((file: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <span className="text-foreground truncate max-w-[200px]">{file.filename}</span>
+                  <span className="text-muted-foreground ml-2">{formatFileSize(file.file_size)}</span>
+                </div>
+              ))}
+            </div>
             <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-              <span>{formatFileSize(fileData.file_size)}</span>
+              <span>{formatFileSize(fileData.reduce((sum: number, f: any) => sum + f.file_size, 0))}</span>
               <span>•</span>
-              <span>{fileData.download_count} downloads</span>
+              <span>{fileData[0].download_count} downloads</span>
             </div>
           </div>
 
@@ -152,14 +173,14 @@ const Download = () => {
             ) : (
               <>
                 <DownloadIcon className="w-5 h-5 mr-2" />
-                Download File
+                Download {fileData.length > 1 ? 'All Files' : 'File'}
               </>
             )}
           </Button>
 
           <div className="pt-4 border-t">
             <p className="text-xs text-muted-foreground">
-              Uploaded {new Date(fileData.created_at).toLocaleDateString()}
+              Uploaded {new Date(fileData[0].created_at).toLocaleDateString()}
             </p>
           </div>
         </div>

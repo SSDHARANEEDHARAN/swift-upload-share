@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       files: {
         Row: {
+          batch_id: string | null
           created_at: string | null
           download_count: number | null
           expires_at: string | null
@@ -27,6 +28,7 @@ export type Database = {
           storage_path: string
         }
         Insert: {
+          batch_id?: string | null
           created_at?: string | null
           download_count?: number | null
           expires_at?: string | null
@@ -38,6 +40,7 @@ export type Database = {
           storage_path: string
         }
         Update: {
+          batch_id?: string | null
           created_at?: string | null
           download_count?: number | null
           expires_at?: string | null
