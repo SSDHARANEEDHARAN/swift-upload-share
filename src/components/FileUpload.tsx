@@ -16,6 +16,8 @@ export const FileUpload = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadSpeed, setUploadSpeed] = useState(0);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [currentBatchId, setCurrentBatchId] = useState("");
+  const [currentShareToken, setCurrentShareToken] = useState("");
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -54,8 +56,9 @@ export const FileUpload = () => {
     setCurrentFileIndex(0);
 
     try {
-      const batchId = crypto.randomUUID();
-      const shareToken = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      // Use existing batch/token if adding more files, otherwise create new
+      const batchId = currentBatchId || crypto.randomUUID();
+      const shareToken = currentShareToken || Array.from(crypto.getRandomValues(new Uint8Array(16)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
@@ -113,6 +116,10 @@ export const FileUpload = () => {
       clearInterval(progressInterval);
       setProgress(100);
       
+      // Store batch info for adding more files
+      setCurrentBatchId(batchId);
+      setCurrentShareToken(shareToken);
+      
       const link = `${window.location.origin}/download/${shareToken}`;
       setShareLink(link);
       toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
@@ -132,11 +139,20 @@ export const FileUpload = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const addMoreFiles = () => {
+    setFiles([]);
+    setProgress(0);
+    setCurrentFileIndex(0);
+    // Keep shareLink, currentBatchId, and currentShareToken
+  };
+
   const reset = () => {
     setFiles([]);
     setShareLink("");
     setProgress(0);
     setCurrentFileIndex(0);
+    setCurrentBatchId("");
+    setCurrentShareToken("");
   };
 
   return (
@@ -266,13 +282,21 @@ export const FileUpload = () => {
             </Button>
           </div>
 
-          <Button
-            onClick={reset}
-            variant="outline"
-            className="w-full"
-          >
-            Upload Another File
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={addMoreFiles}
+              className="flex-1 bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90"
+            >
+              Add More Files
+            </Button>
+            <Button
+              onClick={reset}
+              variant="outline"
+              className="flex-1"
+            >
+              New Upload
+            </Button>
+          </div>
         </div>
       )}
     </Card>
