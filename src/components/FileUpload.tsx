@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import QRCode from "react-qr-code";
 
 export const FileUpload = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -160,7 +161,7 @@ export const FileUpload = () => {
                     Drop your file here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Maximum file size: 100MB
+                    Maximum file size: 1GB
                   </p>
                 </div>
               )}
@@ -210,6 +211,12 @@ export const FileUpload = () => {
             <p className="text-muted-foreground">Your file is ready to share</p>
           </div>
           
+          <div className="bg-background border rounded-lg p-6 mb-4">
+            <div className="flex justify-center mb-4">
+              <QRCode value={shareLink} size={200} />
+            </div>
+          </div>
+
           <div className="bg-muted/50 rounded-lg p-4">
             <p className="text-xs text-muted-foreground mb-2">Share this link</p>
             <p className="text-sm font-mono break-all mb-3 text-foreground">{shareLink}</p>
