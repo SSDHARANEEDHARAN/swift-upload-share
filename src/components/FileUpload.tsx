@@ -122,7 +122,21 @@ export const FileUpload = () => {
       
       const link = `${window.location.origin}/download/${shareToken}`;
       setShareLink(link);
-      toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
+      
+      // Send email notification
+      try {
+        await supabase.functions.invoke('send-share-link', {
+          body: {
+            shareLink: link,
+            fileCount: files.length,
+            totalSize: (files.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2) + ' MB'
+          }
+        });
+        toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded! Link sent to email.`);
+      } catch (emailError) {
+        console.error('Email notification error:', emailError);
+        toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
+      }
     } catch (error: any) {
       console.error('Upload error:', error);
       toast.error("Upload failed. Please try again.");
