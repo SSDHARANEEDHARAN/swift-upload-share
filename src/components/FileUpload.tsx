@@ -56,6 +56,14 @@ export const FileUpload = () => {
     setCurrentFileIndex(0);
 
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in to upload files");
+        setUploading(false);
+        return;
+      }
+
       // Use existing batch/token if adding more files, otherwise create new
       const batchId = currentBatchId || crypto.randomUUID();
       const shareToken = currentShareToken || Array.from(crypto.getRandomValues(new Uint8Array(16)))
@@ -108,6 +116,7 @@ export const FileUpload = () => {
             storage_path: filePath,
             batch_id: batchId,
             share_token: shareToken,
+            user_id: user.id,
           });
 
         if (dbError) throw dbError;

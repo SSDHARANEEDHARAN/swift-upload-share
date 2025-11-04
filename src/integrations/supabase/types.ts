@@ -26,6 +26,7 @@ export type Database = {
           id: string
           share_token: string
           storage_path: string
+          user_id: string | null
         }
         Insert: {
           batch_id?: string | null
@@ -38,6 +39,7 @@ export type Database = {
           id?: string
           share_token?: string
           storage_path: string
+          user_id?: string | null
         }
         Update: {
           batch_id?: string | null
@@ -50,6 +52,31 @@ export type Database = {
           id?: string
           share_token?: string
           storage_path?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

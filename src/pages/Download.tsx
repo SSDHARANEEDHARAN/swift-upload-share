@@ -169,10 +169,17 @@ const Download = () => {
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-              <span>{formatFileSize(fileData.reduce((sum: number, f: any) => sum + f.file_size, 0))}</span>
-              <span>•</span>
-              <span>{fileData[0].download_count} downloads</span>
+            <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-4">
+                <span>{formatFileSize(fileData.reduce((sum: number, f: any) => sum + f.file_size, 0))}</span>
+                <span>•</span>
+                <span>{fileData[0].download_count} downloads</span>
+              </div>
+              {fileData[0].user_id && (
+                <div className="text-xs bg-primary/10 px-3 py-1 rounded-full">
+                  Uploaded by verified user
+                </div>
+              )}
             </div>
           </div>
 
