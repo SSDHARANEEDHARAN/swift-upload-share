@@ -64,47 +64,57 @@ export const FileUpload = () => {
         return;
       }
 
+      console.log("Starting upload for user:", user.id);
+
       // Use existing batch/token if adding more files, otherwise create new
       const batchId = currentBatchId || crypto.randomUUID();
       const shareToken = currentShareToken || Array.from(crypto.getRandomValues(new Uint8Array(16)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
+      console.log("Batch ID:", batchId, "Share Token:", shareToken);
+
       const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-      const totalSizeMB = totalSize / (1024 * 1024);
+      let uploadedSize = 0;
       const startTime = Date.now();
 
-      // Fast progress animation
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 95) return prev;
-          return Math.min(prev + 15, 95);
-        });
-
-        const elapsed = (Date.now() - startTime) / 1000;
-        if (elapsed > 0) {
-          const speed = totalSizeMB / elapsed;
-          setUploadSpeed(speed);
-        }
-      }, 100);
-
-      // Upload all files
+      // Upload all files with real progress tracking
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setCurrentFileIndex(i + 1);
         
-        const fileName = `${Date.now()}_${i}_${file.name}`;
+        console.log(`Uploading file ${i + 1}/${files.length}:`, file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+        
+        const fileName = `${user.id}/${Date.now()}_${i}_${file.name}`;
         const filePath = `${fileName}`;
 
-        // Upload to storage
-        const { error: uploadError } = await supabase.storage
+        // Upload to storage with progress tracking
+        const fileStartSize = uploadedSize;
+        const { data, error: uploadError } = await supabase.storage
           .from('transfers')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: false
           });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          throw uploadError;
+        }
+
+        console.log("File uploaded successfully:", data?.path);
+
+        // Update progress after each file
+        uploadedSize += file.size;
+        const overallProgress = (uploadedSize / totalSize) * 100;
+        setProgress(overallProgress);
+
+        // Calculate real upload speed
+        const elapsed = (Date.now() - startTime) / 1000;
+        if (elapsed > 0) {
+          const speed = (uploadedSize / (1024 * 1024)) / elapsed;
+          setUploadSpeed(speed);
+        }
 
         // Insert file metadata with shared batch_id and share_token
         const { error: dbError } = await supabase
@@ -119,10 +129,14 @@ export const FileUpload = () => {
             user_id: user.id,
           });
 
-        if (dbError) throw dbError;
+        if (dbError) {
+          console.error("Database error:", dbError);
+          throw dbError;
+        }
+
+        console.log("File metadata saved to database");
       }
 
-      clearInterval(progressInterval);
       setProgress(100);
       
       // Store batch info for adding more files
@@ -132,15 +146,18 @@ export const FileUpload = () => {
       const link = `${window.location.origin}/download/${shareToken}`;
       setShareLink(link);
       
+      console.log("Upload complete! Share link:", link);
+      
       // Send email notification
       try {
-        await supabase.functions.invoke('send-share-link', {
+        const emailResult = await supabase.functions.invoke('send-share-link', {
           body: {
             shareLink: link,
             fileCount: files.length,
             totalSize: (files.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2) + ' MB'
           }
         });
+        console.log("Email notification result:", emailResult);
         toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded! Link sent to email.`);
       } catch (emailError) {
         console.error('Email notification error:', emailError);
