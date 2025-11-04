@@ -25,13 +25,26 @@ const Download = () => {
 
   const loadFileData = async () => {
     try {
+      console.log('Loading files with token:', token);
+      
       const { data, error } = await supabase
         .from('files')
         .select('*')
         .eq('share_token', token);
 
-      if (error || !data || data.length === 0) {
+      console.log('Query result:', { data, error });
+
+      if (error) {
+        console.error('Database error:', error);
         setError(true);
+        toast.error("Database error loading files");
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('No files found with token:', token);
+        setError(true);
+        toast.error("No files found with this link");
         return;
       }
 
@@ -41,15 +54,18 @@ const Download = () => {
       );
       
       if (anyExpired) {
+        console.error('Files expired');
         setError(true);
         toast.error("One or more files have expired");
         return;
       }
 
+      console.log('Files loaded successfully:', data.length);
       setFileData(data);
     } catch (err) {
       console.error('Error loading file:', err);
       setError(true);
+      toast.error("Failed to load files");
     } finally {
       setLoading(false);
     }
