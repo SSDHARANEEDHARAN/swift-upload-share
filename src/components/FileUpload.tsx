@@ -214,11 +214,12 @@ export const FileUpload = ({ user }: FileUploadProps) => {
   };
 
   return (
-    <Card className="w-full max-w-2xl p-8 shadow-[var(--shadow-card)] animate-fade-in-up">
+    <Card className="w-full max-w-2xl p-8 shadow-[var(--shadow-elevated)] backdrop-blur-sm bg-card/95 animate-fade-in-up border-2">
       {!user && (
-        <Alert className="mb-6 border-primary/20 bg-primary/5">
-          <AlertDescription>
-            Anonymous uploads limited to 200MB. <span className="font-semibold text-primary">Login to share up to 1GB!</span>
+        <Alert className="mb-6 border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10 animate-fade-in-up">
+          <AlertDescription className="text-sm">
+            Anonymous uploads limited to <span className="font-bold text-primary">200MB</span>. 
+            <span className="font-semibold text-accent ml-1">Login to share up to 1GB!</span>
           </AlertDescription>
         </Alert>
       )}
@@ -295,7 +296,7 @@ export const FileUpload = ({ user }: FileUploadProps) => {
           <Button
             onClick={uploadFile}
             disabled={files.length === 0 || uploading}
-            className="w-full h-12 text-base bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90 transition-opacity"
+            className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] hover:opacity-90 hover:scale-[1.02] transition-all shadow-[var(--shadow-glow)]"
           >
             {uploading ? (
               <>
@@ -312,27 +313,31 @@ export const FileUpload = ({ user }: FileUploadProps) => {
         </div>
       ) : (
         <div className="text-center space-y-6">
-          <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center animate-pulse-glow">
-            <Check className="w-10 h-10 text-primary" />
+          <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-primary/20 via-accent/20 to-[hsl(310,80%,70%)]/20 flex items-center justify-center animate-pulse-glow backdrop-blur-sm border-2 border-primary/30">
+            <Check className="w-12 h-12 text-primary" />
           </div>
           <div className="animate-fade-in-up">
-            <h3 className="text-2xl font-bold mb-2">Upload Complete!</h3>
-            <p className="text-muted-foreground">Your files are ready to share</p>
+            <h3 className="text-3xl font-display font-bold mb-3 bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] bg-clip-text text-transparent">
+              Upload Complete!
+            </h3>
+            <p className="text-lg text-muted-foreground">Your files are ready to share</p>
           </div>
           
-          <div className="bg-background border rounded-lg p-6 mb-4">
-            <div className="flex justify-center mb-4">
-              <QRCode value={shareLink} size={200} />
+          <div className="bg-gradient-to-br from-background via-card to-muted/30 border-2 border-primary/20 rounded-2xl p-8 mb-6 shadow-[var(--shadow-elevated)]">
+            <div className="flex justify-center mb-6">
+              <div className="p-4 bg-white rounded-xl shadow-lg">
+                <QRCode value={shareLink} size={200} />
+              </div>
             </div>
           </div>
 
-          <div className="bg-muted/50 rounded-lg p-4">
-            <p className="text-xs text-muted-foreground mb-2">Share this link</p>
-            <p className="text-sm font-mono break-all mb-3 text-foreground">{shareLink}</p>
+          <div className="bg-gradient-to-r from-muted/50 to-muted/30 rounded-xl p-5 border border-border shadow-lg">
+            <p className="text-xs font-semibold text-primary mb-3 uppercase tracking-wider">Share this link</p>
+            <p className="text-sm font-mono break-all mb-4 text-foreground bg-background/50 p-3 rounded-lg border">{shareLink}</p>
             <Button
               onClick={copyLink}
               variant="outline"
-              className="w-full"
+              className="w-full h-12 font-semibold hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
             >
               {copied ? (
                 <>
@@ -352,16 +357,16 @@ export const FileUpload = ({ user }: FileUploadProps) => {
             <div className="flex gap-3">
               <Button
                 onClick={addMoreFiles}
-                className="flex-1 bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90"
+                className="flex-1 h-12 font-semibold bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] hover:opacity-90 hover:scale-[1.02] transition-all shadow-[var(--shadow-glow)]"
               >
                 Add More Files
               </Button>
               <Button
                 onClick={finalizeBatch}
                 variant="outline"
-                className="flex-1 gap-2"
+                className="flex-1 h-12 font-semibold gap-2 hover:bg-accent hover:text-accent-foreground hover:border-accent transition-all"
               >
-                <CheckCircle className="w-4 h-4" />
+                <CheckCircle className="w-5 h-5" />
                 Done
               </Button>
             </div>
@@ -370,7 +375,7 @@ export const FileUpload = ({ user }: FileUploadProps) => {
           {isFinalized && (
             <Button
               onClick={reset}
-              className="w-full bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90"
+              className="w-full h-12 font-semibold bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] hover:opacity-90 hover:scale-[1.02] transition-all shadow-[var(--shadow-glow)]"
             >
               New Upload
             </Button>

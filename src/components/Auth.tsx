@@ -87,15 +87,15 @@ export const Auth = () => {
         </div>
       )}
 
-      <Card className="w-full max-w-md p-8 shadow-[var(--shadow-card)] animate-fade-in-up">
+      <Card className="w-full max-w-md p-8 shadow-[var(--shadow-elevated)] backdrop-blur-sm bg-card/95 animate-fade-in-up border-2">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] flex items-center justify-center">
-            <HandMetal className="w-10 h-10 text-white" />
+          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary via-accent to-[hsl(310,80%,70%)] flex items-center justify-center shadow-[var(--shadow-glow)]">
+            <HandMetal className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-display font-bold bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] bg-clip-text text-transparent mb-3">
             {isLogin ? "Welcome Back" : "Join Go"}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             {isLogin ? "Enter to continue your journey" : "Start sharing files up to 1GB"}
           </p>
         </div>
@@ -151,7 +151,7 @@ export const Auth = () => {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 text-base bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90 transition-opacity"
+            className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] hover:opacity-90 hover:scale-[1.02] transition-all shadow-[var(--shadow-glow)]"
           >
             {loading ? (
               <>

@@ -59,14 +59,14 @@ const Upload = () => {
       )}
 
       <div className="text-center mb-8">
-        <h1 className="text-6xl font-bold mb-3 bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] bg-clip-text text-transparent">
+        <h1 className="text-7xl font-display font-bold mb-4 bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] bg-clip-text text-transparent animate-fade-in-up tracking-tight">
           Go
         </h1>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-xl text-muted-foreground animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           Share files quickly and securely
         </p>
         {!user && (
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-3 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             No login needed for files up to 200MB
           </p>
         )}
