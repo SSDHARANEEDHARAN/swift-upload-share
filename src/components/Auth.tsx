@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2, HandMetal, DoorOpen } from "lucide-react";
 
 export const Auth = () => {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +33,8 @@ export const Auth = () => {
         setShowDoor(true);
         setTimeout(() => {
           toast.success("Welcome back! 🤝");
-        }, 800);
+          navigate("/");
+        }, 1200);
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -59,7 +62,8 @@ export const Auth = () => {
           setShowDoor(true);
           setTimeout(() => {
             toast.success("Account created! Welcome! 🤝");
-          }, 800);
+            navigate("/");
+          }, 1200);
         }
       }
     } catch (error: any) {
