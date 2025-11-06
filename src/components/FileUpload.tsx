@@ -1,13 +1,18 @@
 import { useState, useCallback } from "react";
-import { Upload, Link2, Check, Loader2 } from "lucide-react";
+import { Upload, Link2, Check, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export const FileUpload = () => {
+interface FileUploadProps {
+  user?: any;
+}
+
+export const FileUpload = ({ user }: FileUploadProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -18,6 +23,11 @@ export const FileUpload = () => {
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [currentBatchId, setCurrentBatchId] = useState("");
   const [currentShareToken, setCurrentShareToken] = useState("");
+  const [isFinalized, setIsFinalized] = useState(false);
+
+  const MAX_SIZE_ANONYMOUS = 200 * 1024 * 1024; // 200MB
+  const MAX_SIZE_AUTHENTICATED = 1024 * 1024 * 1024; // 1GB
+  const maxSize = user ? MAX_SIZE_AUTHENTICATED : MAX_SIZE_ANONYMOUS;
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -50,31 +60,26 @@ export const FileUpload = () => {
   const uploadFile = async () => {
     if (files.length === 0) return;
 
+    // Check file size limits
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > maxSize) {
+      const maxSizeMB = user ? "1GB" : "200MB";
+      toast.error(`Total file size exceeds ${maxSizeMB} limit. ${user ? '' : 'Login to share up to 1GB!'}`);
+      return;
+    }
+
     setUploading(true);
     setProgress(0);
     setUploadSpeed(0);
     setCurrentFileIndex(0);
 
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("You must be logged in to upload files");
-        setUploading(false);
-        return;
-      }
-
-      console.log("Starting upload for user:", user.id);
-
       // Use existing batch/token if adding more files, otherwise create new
       const batchId = currentBatchId || crypto.randomUUID();
       const shareToken = currentShareToken || Array.from(crypto.getRandomValues(new Uint8Array(16)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-      
-      console.log("Batch ID:", batchId, "Share Token:", shareToken);
 
-      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
       let uploadedSize = 0;
       const startTime = Date.now();
 
@@ -83,13 +88,10 @@ export const FileUpload = () => {
         const file = files[i];
         setCurrentFileIndex(i + 1);
         
-        console.log(`Uploading file ${i + 1}/${files.length}:`, file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
-        
-        const fileName = `${user.id}/${Date.now()}_${i}_${file.name}`;
+        const fileName = user ? `${user.id}/${Date.now()}_${i}_${file.name}` : `anonymous/${Date.now()}_${i}_${file.name}`;
         const filePath = `${fileName}`;
 
-        // Upload to storage with progress tracking
-        const fileStartSize = uploadedSize;
+        // Upload to storage
         const { data, error: uploadError } = await supabase.storage
           .from('transfers')
           .upload(filePath, file, {
@@ -101,8 +103,6 @@ export const FileUpload = () => {
           console.error("Upload error:", uploadError);
           throw uploadError;
         }
-
-        console.log("File uploaded successfully:", data?.path);
 
         // Update progress after each file
         uploadedSize += file.size;
@@ -116,7 +116,7 @@ export const FileUpload = () => {
           setUploadSpeed(speed);
         }
 
-        // Insert file metadata with shared batch_id and share_token
+        // Insert file metadata
         const { error: dbError } = await supabase
           .from('files')
           .insert({
@@ -126,15 +126,13 @@ export const FileUpload = () => {
             storage_path: filePath,
             batch_id: batchId,
             share_token: shareToken,
-            user_id: user.id,
+            user_id: user?.id || null,
           });
 
         if (dbError) {
           console.error("Database error:", dbError);
           throw dbError;
         }
-
-        console.log("File metadata saved to database");
       }
 
       setProgress(100);
@@ -146,21 +144,22 @@ export const FileUpload = () => {
       const link = `${window.location.origin}/download/${shareToken}`;
       setShareLink(link);
       
-      console.log("Upload complete! Share link:", link);
-      
-      // Send email notification
-      try {
-        const emailResult = await supabase.functions.invoke('send-share-link', {
-          body: {
-            shareLink: link,
-            fileCount: files.length,
-            totalSize: (files.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2) + ' MB'
-          }
-        });
-        console.log("Email notification result:", emailResult);
-        toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded! Link sent to email.`);
-      } catch (emailError) {
-        console.error('Email notification error:', emailError);
+      // Send email notification if user is logged in
+      if (user?.email) {
+        try {
+          await supabase.functions.invoke('send-share-link', {
+            body: {
+              shareLink: link,
+              fileCount: files.length,
+              totalSize: (totalSize / 1024 / 1024).toFixed(2) + ' MB'
+            }
+          });
+          toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded! Link sent to ${user.email}`);
+        } catch (emailError) {
+          console.error('Email notification error:', emailError);
+          toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
+        }
+      } else {
         toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
       }
     } catch (error: any) {
@@ -169,6 +168,25 @@ export const FileUpload = () => {
       setProgress(0);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const finalizeBatch = async () => {
+    if (!currentBatchId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('files')
+        .update({ is_finalized: true })
+        .eq('batch_id', currentBatchId);
+
+      if (error) throw error;
+      
+      setIsFinalized(true);
+      toast.success("Batch finalized! No more files can be added to this link.");
+    } catch (error) {
+      console.error('Finalize error:', error);
+      toast.error("Failed to finalize batch.");
     }
   };
 
@@ -183,7 +201,6 @@ export const FileUpload = () => {
     setFiles([]);
     setProgress(0);
     setCurrentFileIndex(0);
-    // Keep shareLink, currentBatchId, and currentShareToken
   };
 
   const reset = () => {
@@ -193,10 +210,19 @@ export const FileUpload = () => {
     setCurrentFileIndex(0);
     setCurrentBatchId("");
     setCurrentShareToken("");
+    setIsFinalized(false);
   };
 
   return (
-    <Card className="w-full max-w-2xl p-8 shadow-[var(--shadow-card)]">
+    <Card className="w-full max-w-2xl p-8 shadow-[var(--shadow-card)] animate-fade-in-up">
+      {!user && (
+        <Alert className="mb-6 border-primary/20 bg-primary/5">
+          <AlertDescription>
+            Anonymous uploads limited to 200MB. <span className="font-semibold text-primary">Login to share up to 1GB!</span>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {!shareLink ? (
         <div className="space-y-6">
           <div
@@ -242,7 +268,7 @@ export const FileUpload = () => {
                     Drop your files here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Up to 10 files, 1GB each
+                    Up to 10 files, {user ? '1GB' : '200MB'} total
                   </p>
                 </div>
               )}
@@ -279,19 +305,19 @@ export const FileUpload = () => {
             ) : (
               <>
                 <Upload className="w-5 h-5 mr-2" />
-                Upload {files.length > 0 ? `${files.length} File${files.length > 1 ? 's' : ''}` : 'Files'}
+                Go {files.length > 0 ? `with ${files.length} File${files.length > 1 ? 's' : ''}` : ''}
               </>
             )}
           </Button>
         </div>
       ) : (
         <div className="text-center space-y-6">
-          <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center animate-pulse-glow">
             <Check className="w-10 h-10 text-primary" />
           </div>
-          <div>
+          <div className="animate-fade-in-up">
             <h3 className="text-2xl font-bold mb-2">Upload Complete!</h3>
-            <p className="text-muted-foreground">Your file is ready to share</p>
+            <p className="text-muted-foreground">Your files are ready to share</p>
           </div>
           
           <div className="bg-background border rounded-lg p-6 mb-4">
@@ -322,21 +348,33 @@ export const FileUpload = () => {
             </Button>
           </div>
 
-          <div className="flex gap-3">
-            <Button
-              onClick={addMoreFiles}
-              className="flex-1 bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90"
-            >
-              Add More Files
-            </Button>
+          {!isFinalized && (
+            <div className="flex gap-3">
+              <Button
+                onClick={addMoreFiles}
+                className="flex-1 bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90"
+              >
+                Add More Files
+              </Button>
+              <Button
+                onClick={finalizeBatch}
+                variant="outline"
+                className="flex-1 gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Done
+              </Button>
+            </div>
+          )}
+
+          {isFinalized && (
             <Button
               onClick={reset}
-              variant="outline"
-              className="flex-1"
+              className="w-full bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90"
             >
               New Upload
             </Button>
-          </div>
+          )}
         </div>
       )}
     </Card>

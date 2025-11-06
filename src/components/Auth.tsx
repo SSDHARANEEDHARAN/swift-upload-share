@@ -2,10 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, HandMetal, DoorOpen } from "lucide-react";
 
 export const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,6 +12,7 @@ export const Auth = () => {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showDoor, setShowDoor] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,120 +20,162 @@ export const Auth = () => {
 
     try {
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        
+
         if (error) throw error;
-        toast.success("Welcome back!");
+
+        // Show door animation
+        setShowDoor(true);
+        setTimeout(() => {
+          toast.success("Welcome back! 🤝");
+        }, 800);
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+          },
         });
-        
+
         if (error) throw error;
 
-        // Create profile
         if (data.user) {
-          await supabase.from("profiles").insert({
+          // Create profile
+          const { error: profileError } = await supabase.from("profiles").insert({
             id: data.user.id,
-            email,
-            display_name: displayName || email.split('@')[0],
+            email: email,
+            display_name: displayName || email.split("@")[0],
           });
+
+          if (profileError) {
+            console.error("Profile creation error:", profileError);
+          }
+
+          // Show door animation
+          setShowDoor(true);
+          setTimeout(() => {
+            toast.success("Account created! Welcome! 🤝");
+          }, 800);
         }
-        
-        toast.success("Account created! You're logged in.");
       }
     } catch (error: any) {
-      console.error("Auth error:", error);
-      toast.error(error.message || "Authentication failed");
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-[hsl(252,100%,97%)] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-8 shadow-[var(--shadow-card)]">
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] bg-clip-text text-transparent">
-            File Transfer
+    <div className="min-h-screen bg-gradient-to-br from-background to-[hsl(252,100%,97%)] flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Door Animation Overlay */}
+      {showDoor && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="animate-door-open">
+            <DoorOpen className="w-32 h-32 text-primary" />
+          </div>
+          <div className="absolute animate-handshake delay-300">
+            <HandMetal className="w-24 h-24 text-accent" />
+          </div>
+        </div>
+      )}
+
+      <Card className="w-full max-w-md p-8 shadow-[var(--shadow-card)] animate-fade-in-up">
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] flex items-center justify-center">
+            <HandMetal className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] bg-clip-text text-transparent mb-2">
+            {isLogin ? "Welcome Back" : "Join Go"}
           </h1>
           <p className="text-muted-foreground">
-            {isLogin ? "Sign in to your account" : "Create a new account"}
+            {isLogin ? "Enter to continue your journey" : "Start sharing files up to 1GB"}
           </p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
           {!isLogin && (
             <div>
-              <Label htmlFor="displayName">Display Name</Label>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Display Name
+              </label>
               <Input
-                id="displayName"
                 type="text"
                 placeholder="Your name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                required={!isLogin}
+                disabled={loading}
+                className="h-12"
               />
             </div>
           )}
 
           <div>
-            <Label htmlFor="email">Email</Label>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Email
+            </label>
             <Input
-              id="email"
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
               required
+              className="h-12"
             />
           </div>
 
           <div>
-            <Label htmlFor="password">Password</Label>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Password
+            </label>
             <Input
-              id="password"
               type="password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
               required
               minLength={6}
+              className="h-12"
             />
           </div>
 
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90"
             disabled={loading}
+            className="w-full h-12 text-base bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] hover:opacity-90 transition-opacity"
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Please wait...
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                {isLogin ? "Signing in..." : "Creating account..."}
               </>
-            ) : isLogin ? (
-              "Sign In"
             ) : (
-              "Sign Up"
+              <>{isLogin ? "Sign In" : "Create Account"}</>
             )}
           </Button>
         </form>
 
         <div className="mt-6 text-center">
           <button
-            type="button"
             onClick={() => setIsLogin(!isLogin)}
+            disabled={loading}
             className="text-sm text-primary hover:underline"
           >
             {isLogin
               ? "Don't have an account? Sign up"
               : "Already have an account? Sign in"}
           </button>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-border text-center">
+          <p className="text-xs text-muted-foreground">
+            Anonymous users can share up to 200MB
+          </p>
         </div>
       </Card>
     </div>

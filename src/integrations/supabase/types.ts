@@ -24,6 +24,7 @@ export type Database = {
           file_type: string | null
           filename: string
           id: string
+          is_finalized: boolean | null
           share_token: string
           storage_path: string
           user_id: string | null
@@ -37,6 +38,7 @@ export type Database = {
           file_type?: string | null
           filename: string
           id?: string
+          is_finalized?: boolean | null
           share_token?: string
           storage_path: string
           user_id?: string | null
@@ -50,6 +52,7 @@ export type Database = {
           file_type?: string | null
           filename?: string
           id?: string
+          is_finalized?: boolean | null
           share_token?: string
           storage_path?: string
           user_id?: string | null
