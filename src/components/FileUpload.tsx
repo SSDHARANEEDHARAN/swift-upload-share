@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Upload, Link2, Check, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { CircularProgress } from "@/components/ui/circular-progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
@@ -277,19 +277,18 @@ export const FileUpload = ({ user }: FileUploadProps) => {
           </div>
 
           {uploading && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Uploading {currentFileIndex}/{files.length}...
-                </span>
-                <span className="font-semibold text-primary">{Math.round(progress)}%</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-              {uploadSpeed > 0 && (
-                <p className="text-xs text-muted-foreground text-right">
-                  {uploadSpeed.toFixed(2)} MB/s
+            <div className="flex flex-col items-center space-y-4">
+              <CircularProgress value={progress} size={140} strokeWidth={10} />
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Uploading {currentFileIndex}/{files.length}
                 </p>
-              )}
+                {uploadSpeed > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {uploadSpeed.toFixed(2)} MB/s
+                  </p>
+                )}
+              </div>
             </div>
           )}
 

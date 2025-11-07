@@ -38,8 +38,47 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const [ripples, setRipples] = React.useState<Array<{ x: number; y: number; id: number }>>([]);
+
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      const button = e.currentTarget;
+      const rect = button.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const id = Date.now();
+
+      setRipples((prev) => [...prev, { x, y, id }]);
+
+      setTimeout(() => {
+        setRipples((prev) => prev.filter((ripple) => ripple.id !== id));
+      }, 600);
+
+      props.onClick?.(e);
+    };
+
     const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }), "relative overflow-hidden")}
+        ref={ref}
+        {...props}
+        onClick={!asChild ? handleClick : props.onClick}
+      >
+        {props.children}
+        {ripples.map((ripple) => (
+          <span
+            key={ripple.id}
+            className="absolute rounded-full bg-white/30 animate-ripple pointer-events-none"
+            style={{
+              left: ripple.x,
+              top: ripple.y,
+              width: 0,
+              height: 0,
+            }}
+          />
+        ))}
+      </Comp>
+    );
   },
 );
 Button.displayName = "Button";
