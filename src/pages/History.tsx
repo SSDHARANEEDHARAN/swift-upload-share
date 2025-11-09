@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, FileText, Share2, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface UploadBatch {
   batch_id: string;
@@ -82,8 +83,36 @@ const History = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-[hsl(252,100%,97%)] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-gradient-to-br from-background to-[hsl(252,100%,97%)] p-4">
+        <div className="max-w-4xl mx-auto py-8">
+          <Skeleton className="h-9 w-32 mb-6" />
+          
+          <div className="mb-8">
+            <Skeleton className="h-10 w-64 mb-2" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Skeleton className="h-5 w-5 rounded-full" />
+                      <Skeleton className="h-6 w-32" />
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-9 w-28" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
