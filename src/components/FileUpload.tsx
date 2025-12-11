@@ -83,12 +83,17 @@ export const FileUpload = ({ user }: FileUploadProps) => {
       let uploadedSize = 0;
       const startTime = Date.now();
 
+      // Sanitize filename to prevent path traversal
+      const sanitizeFilename = (name: string) => 
+        name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 255);
+
       // Upload all files with real progress tracking
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setCurrentFileIndex(i + 1);
         
-        const fileName = user ? `${user.id}/${Date.now()}_${i}_${file.name}` : `anonymous/${Date.now()}_${i}_${file.name}`;
+        const sanitizedName = sanitizeFilename(file.name);
+        const fileName = user ? `${user.id}/${Date.now()}_${i}_${sanitizedName}` : `anonymous/${Date.now()}_${i}_${sanitizedName}`;
         const filePath = `${fileName}`;
 
         // Upload to storage

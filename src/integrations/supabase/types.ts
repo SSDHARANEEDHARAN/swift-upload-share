@@ -88,7 +88,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_files_by_share_token: {
+        Args: { p_share_token: string }
+        Returns: {
+          batch_id: string | null
+          created_at: string | null
+          download_count: number | null
+          expires_at: string | null
+          file_size: number
+          file_type: string | null
+          filename: string
+          id: string
+          is_finalized: boolean | null
+          share_token: string
+          storage_path: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "files"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      increment_download_count: {
+        Args: { file_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
