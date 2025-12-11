@@ -24,46 +24,43 @@ const Download = () => {
   }, [fileData]);
 
   const loadFileData = async () => {
-    try {
-      console.log('Loading files with token:', token);
-      
-      const { data, error } = await supabase
-        .from('files')
-        .select('*')
-        .eq('share_token', token);
+    if (!token || token.length < 10) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
 
-      console.log('Query result:', { data, error });
+    try {
+      // Use SECURITY DEFINER function to fetch files by share token
+      const { data, error } = await supabase.rpc('get_files_by_share_token', { 
+        p_share_token: token 
+      });
 
       if (error) {
-        console.error('Database error:', error);
         setError(true);
-        toast.error("Database error loading files");
+        toast.error("Failed to load files");
         return;
       }
 
       if (!data || data.length === 0) {
-        console.error('No files found with token:', token);
         setError(true);
         toast.error("No files found with this link");
         return;
       }
 
       // Check if any file is expired
-      const anyExpired = data.some(file => 
+      const anyExpired = data.some((file: any) => 
         file.expires_at && new Date(file.expires_at) < new Date()
       );
       
       if (anyExpired) {
-        console.error('Files expired');
         setError(true);
         toast.error("One or more files have expired");
         return;
       }
 
-      console.log('Files loaded successfully:', data.length);
       setFileData(data);
     } catch (err) {
-      console.error('Error loading file:', err);
       setError(true);
       toast.error("Failed to load files");
     } finally {
@@ -76,16 +73,23 @@ const Download = () => {
 
     setDownloading(true);
     try {
-      // Download all files
+      // Download all files using signed URLs (bucket is now private)
       for (const file of fileData) {
-        const { data, error } = await supabase.storage
+        // Create signed URL for secure access (1 hour expiry)
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
           .from('transfers')
-          .download(file.storage_path);
+          .createSignedUrl(file.storage_path, 3600);
 
-        if (error) throw error;
+        if (signedUrlError || !signedUrlData?.signedUrl) {
+          throw new Error('Failed to generate download URL');
+        }
 
-        // Create download link
-        const url = window.URL.createObjectURL(data);
+        // Download using signed URL
+        const response = await fetch(signedUrlData.signedUrl);
+        if (!response.ok) throw new Error('Download failed');
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = file.filename;
@@ -99,16 +103,12 @@ const Download = () => {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // Update download count
-        await supabase
-          .from('files')
-          .update({ download_count: file.download_count + 1 })
-          .eq('id', file.id);
+        // Update download count using secure SECURITY DEFINER function
+        await supabase.rpc('increment_download_count', { file_id: file.id });
       }
 
       toast.success(`${fileData.length} file${fileData.length > 1 ? 's' : ''} downloaded!`);
     } catch (err) {
-      console.error('Download error:', err);
       toast.error("Download failed. Please try again.");
     } finally {
       setDownloading(false);
