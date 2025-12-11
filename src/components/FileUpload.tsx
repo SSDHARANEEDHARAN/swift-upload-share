@@ -25,8 +25,8 @@ export const FileUpload = ({ user }: FileUploadProps) => {
   const [currentShareToken, setCurrentShareToken] = useState("");
   const [isFinalized, setIsFinalized] = useState(false);
 
-  const MAX_SIZE_ANONYMOUS = 200 * 1024 * 1024; // 200MB
-  const MAX_SIZE_AUTHENTICATED = 1024 * 1024 * 1024; // 1GB
+  const MAX_SIZE_ANONYMOUS = 500 * 1024 * 1024; // 500MB
+  const MAX_SIZE_AUTHENTICATED = 2 * 1024 * 1024 * 1024; // 2GB
   const maxSize = user ? MAX_SIZE_AUTHENTICATED : MAX_SIZE_ANONYMOUS;
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -63,8 +63,8 @@ export const FileUpload = ({ user }: FileUploadProps) => {
     // Check file size limits
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > maxSize) {
-      const maxSizeMB = user ? "1GB" : "200MB";
-      toast.error(`Total file size exceeds ${maxSizeMB} limit. ${user ? '' : 'Login to share up to 1GB!'}`);
+      const maxSizeMB = user ? "2GB" : "500MB";
+      toast.error(`Total file size exceeds ${maxSizeMB} limit. ${user ? '' : 'Login to share up to 2GB!'}`);
       return;
     }
 
@@ -218,8 +218,8 @@ export const FileUpload = ({ user }: FileUploadProps) => {
       {!user && (
         <Alert className="mb-6 border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10 animate-fade-in-up">
           <AlertDescription className="text-sm">
-            Anonymous uploads limited to <span className="font-bold text-primary">200MB</span>. 
-            <span className="font-semibold text-accent ml-1">Login to share up to 1GB!</span>
+            Anonymous uploads limited to <span className="font-bold text-primary">500MB</span>. 
+            <span className="font-semibold text-accent ml-1">Login to share up to 2GB!</span>
           </AlertDescription>
         </Alert>
       )}
@@ -269,7 +269,7 @@ export const FileUpload = ({ user }: FileUploadProps) => {
                     Drop your files here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Up to 10 files, {user ? '1GB' : '200MB'} total
+                    Up to 10 files, {user ? '2GB' : '500MB'} total
                   </p>
                 </div>
               )}
