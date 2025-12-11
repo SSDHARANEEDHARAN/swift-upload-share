@@ -105,7 +105,6 @@ export const FileUpload = ({ user }: FileUploadProps) => {
           });
 
         if (uploadError) {
-          console.error("Upload error:", uploadError);
           throw uploadError;
         }
 
@@ -135,7 +134,6 @@ export const FileUpload = ({ user }: FileUploadProps) => {
           });
 
         if (dbError) {
-          console.error("Database error:", dbError);
           throw dbError;
         }
       }
@@ -160,15 +158,13 @@ export const FileUpload = ({ user }: FileUploadProps) => {
             }
           });
           toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded! Link sent to ${user.email}`);
-        } catch (emailError) {
-          console.error('Email notification error:', emailError);
+        } catch {
           toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
         }
       } else {
         toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
       }
-    } catch (error: any) {
-      console.error('Upload error:', error);
+    } catch {
       toast.error("Upload failed. Please try again.");
       setProgress(0);
     } finally {
@@ -189,8 +185,7 @@ export const FileUpload = ({ user }: FileUploadProps) => {
       
       setIsFinalized(true);
       toast.success("Batch finalized! No more files can be added to this link.");
-    } catch (error) {
-      console.error('Finalize error:', error);
+    } catch {
       toast.error("Failed to finalize batch.");
     }
   };
