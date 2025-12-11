@@ -67,8 +67,7 @@ const History = () => {
       });
 
       setBatches(Array.from(batchMap.values()));
-    } catch (error: any) {
-      console.error('History load error:', error);
+    } catch {
       toast.error("Failed to load history");
     } finally {
       setLoading(false);

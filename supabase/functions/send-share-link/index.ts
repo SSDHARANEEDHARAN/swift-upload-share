@@ -22,8 +22,6 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { shareLink, fileCount, totalSize }: ShareLinkRequest = await req.json();
 
-    console.log("Sending share link email:", { shareLink, fileCount, totalSize });
-
     const emailResponse = await resend.emails.send({
       from: "File Transfer <onboarding@resend.dev>",
       to: ["tharaneetharanss@gmail.com"],
@@ -99,8 +97,6 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Email sent successfully:", emailResponse);
-
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
       headers: {
@@ -109,7 +105,6 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
   } catch (error: any) {
-    console.error("Error in send-share-link function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

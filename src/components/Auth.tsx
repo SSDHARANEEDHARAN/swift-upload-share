@@ -54,9 +54,7 @@ export const Auth = () => {
             display_name: displayName || email.split("@")[0],
           });
 
-          if (profileError) {
-            console.error("Profile creation error:", profileError);
-          }
+          // Profile creation errors are handled silently
 
           // Show door animation
           setShowDoor(true);
