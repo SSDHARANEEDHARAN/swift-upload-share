@@ -1,1 +1,4 @@
 project_id = "uwioiguiqznpxizeekpi"
+
+[functions.send-share-link]
+verify_jwt = true
