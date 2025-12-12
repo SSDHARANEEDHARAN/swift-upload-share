@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -8,11 +10,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface ShareLinkRequest {
-  shareLink: string;
-  fileCount: number;
-  totalSize: string;
-}
+// Input validation schema
+const ShareLinkRequestSchema = z.object({
+  shareLink: z.string().url("Invalid share link URL"),
+  fileCount: z.number().int().positive("File count must be positive"),
+  totalSize: z.string().min(1, "Total size is required"),
+});
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -20,11 +23,47 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { shareLink, fileCount, totalSize }: ShareLinkRequest = await req.json();
+    // Extract and validate JWT token
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid authorization header" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    
+    // Create Supabase client and get user from token
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user?.email) {
+      return new Response(
+        JSON.stringify({ error: "Unable to verify user or user has no email" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Parse and validate request body
+    const body = await req.json();
+    const validationResult = ShareLinkRequestSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ error: validationResult.error.errors[0].message }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const { shareLink, fileCount, totalSize } = validationResult.data;
 
     const emailResponse = await resend.emails.send({
       from: "File Transfer <onboarding@resend.dev>",
-      to: ["tharaneetharanss@gmail.com"],
+      to: [user.email],
       subject: `File Transfer Complete - ${fileCount} file${fileCount > 1 ? 's' : ''} ready`,
       html: `
         <!DOCTYPE html>
@@ -106,7 +145,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
   } catch (error: any) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "An unexpected error occurred" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

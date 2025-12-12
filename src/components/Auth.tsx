@@ -6,6 +6,23 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, HandMetal, DoorOpen } from "lucide-react";
+import { z } from "zod";
+
+// Validation schemas
+const loginSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const signupSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Please enter a valid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  displayName: z.string().trim().max(100, "Display name is too long").optional(),
+});
 
 export const Auth = () => {
   const navigate = useNavigate();
@@ -21,10 +38,26 @@ export const Auth = () => {
     setLoading(true);
 
     try {
+      // Validate input based on login/signup mode
+      const schema = isLogin ? loginSchema : signupSchema;
+      const validationResult = schema.safeParse({
+        email,
+        password,
+        ...(isLogin ? {} : { displayName: displayName || undefined }),
+      });
+
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        setLoading(false);
+        return;
+      }
+
+      const validatedData = validationResult.data;
+
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: validatedData.email,
+          password: validatedData.password,
         });
 
         if (error) throw error;
@@ -37,8 +70,8 @@ export const Auth = () => {
         }, 1200);
       } else {
         const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
+          email: validatedData.email,
+          password: validatedData.password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
           },
@@ -48,13 +81,11 @@ export const Auth = () => {
 
         if (data.user) {
           // Create profile
-          const { error: profileError } = await supabase.from("profiles").insert({
+          await supabase.from("profiles").insert({
             id: data.user.id,
-            email: email,
-            display_name: displayName || email.split("@")[0],
+            email: validatedData.email,
+            display_name: (validatedData as z.infer<typeof signupSchema>).displayName || validatedData.email.split("@")[0],
           });
-
-          // Profile creation errors are handled silently
 
           // Show door animation
           setShowDoor(true);
@@ -94,7 +125,7 @@ export const Auth = () => {
             {isLogin ? "Welcome Back" : "Join Go"}
           </h1>
           <p className="text-base text-muted-foreground">
-            {isLogin ? "Enter to continue your journey" : "Start sharing files up to 1GB"}
+            {isLogin ? "Enter to continue your journey" : "Start sharing files up to 2GB"}
           </p>
         </div>
 
@@ -110,6 +141,7 @@ export const Auth = () => {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 disabled={loading}
+                maxLength={100}
                 className="h-12"
               />
             </div>
@@ -141,9 +173,14 @@ export const Auth = () => {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               required
-              minLength={6}
+              minLength={isLogin ? 6 : 8}
               className="h-12"
             />
+            {!isLogin && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Min 8 characters, include uppercase and number
+              </p>
+            )}
           </div>
 
           <Button
@@ -176,7 +213,7 @@ export const Auth = () => {
 
         <div className="mt-6 pt-6 border-t border-border text-center">
           <p className="text-xs text-muted-foreground">
-            Anonymous users can share up to 200MB
+            Anonymous users can share up to 500MB
           </p>
         </div>
       </Card>
