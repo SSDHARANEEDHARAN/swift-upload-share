@@ -74,18 +74,37 @@ export const FileUpload = ({ user }: FileUploadProps) => {
     setCurrentFileIndex(0);
 
     try {
-      // Use existing batch/token if adding more files, otherwise create new
+      // Use existing batch/token if adding more files
+      // Let database generate share_token server-side for better security
       const batchId = currentBatchId || crypto.randomUUID();
-      const shareToken = currentShareToken || Array.from(crypto.getRandomValues(new Uint8Array(16)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+      let shareToken = currentShareToken;
 
       let uploadedSize = 0;
       const startTime = Date.now();
 
-      // Sanitize filename to prevent path traversal
-      const sanitizeFilename = (name: string) => 
-        name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 255);
+      // Sanitize filename to prevent path traversal and other issues
+      const sanitizeFilename = (name: string) => {
+        // Reserved Windows filenames
+        const reserved = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i;
+        
+        // Remove path components, normalize unicode, remove special chars
+        let sanitized = name
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+          .replace(/[^a-zA-Z0-9._-]/g, '_') // Only allow safe chars
+          .replace(/^\.+/, '') // Remove leading dots (hidden files)
+          .replace(/\.+$/, '') // Remove trailing dots
+          .replace(/_+/g, '_') // Collapse multiple underscores
+          .slice(0, 150); // Reasonable length limit
+        
+        // Handle reserved names
+        const namePart = sanitized.split('.')[0];
+        if (reserved.test(namePart)) {
+          sanitized = '_' + sanitized;
+        }
+        
+        return sanitized || 'unnamed_file';
+      };
 
       // Upload all files with real progress tracking
       for (let i = 0; i < files.length; i++) {
@@ -120,21 +139,34 @@ export const FileUpload = ({ user }: FileUploadProps) => {
           setUploadSpeed(speed);
         }
 
-        // Insert file metadata
-        const { error: dbError } = await supabase
+        // Insert file metadata - let DB generate share_token for first file in new batch
+        const insertData: any = {
+          filename: file.name,
+          file_size: file.size,
+          file_type: file.type,
+          storage_path: filePath,
+          batch_id: batchId,
+          user_id: user?.id || null,
+        };
+        
+        // Only include share_token if we already have one (from previous upload in batch)
+        if (shareToken) {
+          insertData.share_token = shareToken;
+        }
+
+        const { data: insertedData, error: dbError } = await supabase
           .from('files')
-          .insert({
-            filename: file.name,
-            file_size: file.size,
-            file_type: file.type,
-            storage_path: filePath,
-            batch_id: batchId,
-            share_token: shareToken,
-            user_id: user?.id || null,
-          });
+          .insert(insertData)
+          .select('share_token')
+          .single();
 
         if (dbError) {
           throw dbError;
+        }
+        
+        // Get the server-generated share_token from first file insert
+        if (!shareToken && insertedData?.share_token) {
+          shareToken = insertedData.share_token;
         }
       }
 
@@ -360,14 +392,17 @@ export const FileUpload = ({ user }: FileUploadProps) => {
               >
                 Add More Files
               </Button>
-              <Button
-                onClick={finalizeBatch}
-                variant="outline"
-                className="flex-1 h-12 font-semibold gap-2 hover:bg-accent hover:text-accent-foreground hover:border-accent transition-all"
-              >
-                <CheckCircle className="w-5 h-5" />
-                Done
-              </Button>
+              {/* Only show Done button for authenticated users - anonymous users can't update files */}
+              {user && (
+                <Button
+                  onClick={finalizeBatch}
+                  variant="outline"
+                  className="flex-1 h-12 font-semibold gap-2 hover:bg-accent hover:text-accent-foreground hover:border-accent transition-all"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  Done
+                </Button>
+              )}
             </div>
           )}
 
