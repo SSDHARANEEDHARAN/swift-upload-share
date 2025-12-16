@@ -24,7 +24,8 @@ const Download = () => {
   }, [fileData]);
 
   const loadFileData = async () => {
-    if (!token || token.length < 10) {
+    // Validate token format (32 hex characters) before making request
+    if (!token || !/^[a-f0-9]{32}$/.test(token)) {
       setError(true);
       setLoading(false);
       return;
@@ -32,30 +33,21 @@ const Download = () => {
 
     try {
       // Use SECURITY DEFINER function to fetch files by share token
+      // Function now validates token format and filters expired files server-side
       const { data, error } = await supabase.rpc('get_files_by_share_token', { 
         p_share_token: token 
       });
 
       if (error) {
         setError(true);
-        toast.error("Failed to load files");
+        // Don't expose specific error details
+        toast.error("File not found or has expired");
         return;
       }
 
       if (!data || data.length === 0) {
         setError(true);
         toast.error("No files found with this link");
-        return;
-      }
-
-      // Check if any file is expired
-      const anyExpired = data.some((file: any) => 
-        file.expires_at && new Date(file.expires_at) < new Date()
-      );
-      
-      if (anyExpired) {
-        setError(true);
-        toast.error("One or more files have expired");
         return;
       }
 
@@ -92,7 +84,14 @@ const Download = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = file.filename;
+        // Re-sanitize filename on download for security
+        const sanitizedFilename = file.filename
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9._-]/g, '_')
+          .replace(/^\.+/, '')
+          .slice(0, 150) || 'download';
+        a.download = sanitizedFilename;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
