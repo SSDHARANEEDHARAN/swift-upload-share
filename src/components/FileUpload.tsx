@@ -75,10 +75,22 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     setCurrentFileIndex(0);
 
     try {
-      // Use existing batch/token if adding more files
-      // Let database generate share_token server-side for better security
+      const generateShareToken = () => {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        return Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+      };
+
+      // Use existing batch/token if adding more files.
       const batchId = currentBatchId || crypto.randomUUID();
       let shareToken = currentShareToken;
+
+      // Anonymous uploads can't read the DB-generated share_token back due to RLS,
+      // so generate a strong token client-side for new anonymous batches.
+      if (!shareToken && !user) {
+        shareToken = generateShareToken();
+      }
 
       let uploadedSize = 0;
       const startTime = Date.now();
@@ -140,7 +152,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
           setUploadSpeed(speed);
         }
 
-        // Insert file metadata - let DB generate share_token for first file in new batch
+        // Insert file metadata
         const insertData: any = {
           filename: file.name,
           file_size: file.size,
@@ -149,25 +161,27 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
           batch_id: batchId,
           user_id: user?.id || null,
         };
-        
-        // Only include share_token if we already have one (from previous upload in batch)
+
         if (shareToken) {
           insertData.share_token = shareToken;
         }
 
-        const { data: insertedData, error: dbError } = await supabase
-          .from('files')
-          .insert(insertData)
-          .select('share_token')
-          .single();
+        if (!shareToken) {
+          // Authenticated new batch: let DB generate share_token and return it
+          const { data: insertedData, error: dbError } = await supabase
+            .from('files')
+            .insert(insertData)
+            .select('share_token')
+            .single();
 
-        if (dbError) {
-          throw dbError;
-        }
-        
-        // Get the server-generated share_token from first file insert
-        if (!shareToken && insertedData?.share_token) {
-          shareToken = insertedData.share_token;
+          if (dbError) throw dbError;
+
+          if (insertedData?.share_token) {
+            shareToken = insertedData.share_token;
+          }
+        } else {
+          const { error: dbError } = await supabase.from('files').insert(insertData);
+          if (dbError) throw dbError;
         }
       }
 
@@ -200,7 +214,8 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
       
       // Notify parent of upload completion
       onUploadComplete?.();
-    } catch {
+    } catch (err) {
+      console.error("Upload failed", err);
       toast.error("Upload failed. Please try again.");
       setProgress(0);
     } finally {
