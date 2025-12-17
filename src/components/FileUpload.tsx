@@ -10,9 +10,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface FileUploadProps {
   user?: any;
+  onUploadComplete?: () => void;
 }
 
-export const FileUpload = ({ user }: FileUploadProps) => {
+export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -196,6 +197,9 @@ export const FileUpload = ({ user }: FileUploadProps) => {
       } else {
         toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
       }
+      
+      // Notify parent of upload completion
+      onUploadComplete?.();
     } catch {
       toast.error("Upload failed. Please try again.");
       setProgress(0);
