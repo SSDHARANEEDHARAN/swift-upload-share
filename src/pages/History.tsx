@@ -3,10 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, FileText, Share2 } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Share2, ChevronDown, ChevronUp, File } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+
+interface FileInfo {
+  id: string;
+  filename: string;
+  file_size: number;
+  file_type: string | null;
+}
 
 interface UploadBatch {
   batch_id: string;
@@ -15,12 +22,14 @@ interface UploadBatch {
   file_count: number;
   total_size: number;
   is_finalized: boolean;
+  files: FileInfo[];
 }
 
 const History = () => {
   const [batches, setBatches] = useState<UploadBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,7 +51,7 @@ const History = () => {
     try {
       const { data, error } = await supabase
         .from('files')
-        .select('batch_id, share_token, created_at, file_size, is_finalized')
+        .select('id, batch_id, share_token, created_at, file_size, file_type, filename, is_finalized')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -59,11 +68,18 @@ const History = () => {
             file_count: 0,
             total_size: 0,
             is_finalized: file.is_finalized,
+            files: [],
           });
         }
         const batch = batchMap.get(file.batch_id)!;
         batch.file_count++;
         batch.total_size += file.file_size;
+        batch.files.push({
+          id: file.id,
+          filename: file.filename,
+          file_size: file.file_size,
+          file_type: file.file_type,
+        });
       });
 
       setBatches(Array.from(batchMap.values()));
@@ -78,6 +94,24 @@ const History = () => {
     const link = `${window.location.origin}/download/${token}`;
     navigator.clipboard.writeText(link);
     toast.success("Link copied to clipboard!");
+  };
+
+  const toggleBatch = (batchId: string) => {
+    setExpandedBatches((prev) => {
+      const next = new Set(prev);
+      if (next.has(batchId)) {
+        next.delete(batchId);
+      } else {
+        next.add(batchId);
+      }
+      return next;
+    });
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
   };
 
   if (loading) {
@@ -149,45 +183,85 @@ const History = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {batches.map((batch) => (
-              <Card key={batch.batch_id} className="p-6 hover:shadow-[var(--shadow-glow)] transition-all">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <FileText className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold text-lg">
-                        {batch.file_count} file{batch.file_count > 1 ? 's' : ''}
-                      </h3>
-                      {batch.is_finalized && (
-                        <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
-                          Finalized
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {format(new Date(batch.created_at), 'PPp')}
+            {batches.map((batch) => {
+              const isExpanded = expandedBatches.has(batch.batch_id);
+              return (
+                <Card key={batch.batch_id} className="overflow-hidden hover:shadow-[var(--shadow-glow)] transition-all">
+                  <div 
+                    className="p-6 cursor-pointer"
+                    onClick={() => toggleBatch(batch.batch_id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <FileText className="w-5 h-5 text-primary" />
+                          <h3 className="font-semibold text-lg">
+                            {batch.file_count} file{batch.file_count > 1 ? 's' : ''}
+                          </h3>
+                          {batch.is_finalized && (
+                            <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
+                              Finalized
+                            </span>
+                          )}
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            {format(new Date(batch.created_at), 'PPp')}
+                          </div>
+                          <div>
+                            {formatFileSize(batch.total_size)}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        {(batch.total_size / 1024 / 1024).toFixed(2)} MB
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          onClick={() => copyLink(batch.share_token)}
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                        >
+                          <Share2 className="w-4 h-4" />
+                          Copy Link
+                        </Button>
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => copyLink(batch.share_token)}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      Copy Link
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                  
+                  {/* Expanded file list */}
+                  {isExpanded && (
+                    <div className="border-t bg-muted/30 px-6 py-4">
+                      <div className="space-y-2">
+                        {batch.files.map((file) => (
+                          <div 
+                            key={file.id} 
+                            className="flex items-center gap-3 p-3 rounded-lg bg-background/50 hover:bg-background transition-colors"
+                          >
+                            <File className="w-4 h-4 text-primary shrink-0" />
+                            <span className="flex-1 truncate font-medium text-sm">
+                              {file.filename}
+                            </span>
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {formatFileSize(file.file_size)}
+                            </span>
+                            {file.file_type && (
+                              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
+                                {file.file_type.split('/')[1]?.toUpperCase() || file.file_type}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
