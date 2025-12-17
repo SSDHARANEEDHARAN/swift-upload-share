@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, FileText, Share2, ChevronDown, ChevronUp, File } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Share2, ChevronDown, ChevronUp, File, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,6 +94,34 @@ const History = () => {
     const link = `${window.location.origin}/download/${token}`;
     navigator.clipboard.writeText(link);
     toast.success("Link copied to clipboard!");
+  };
+
+  const deleteBatch = async (batchId: string) => {
+    try {
+      // Get storage paths first
+      const { data: fileData } = await supabase
+        .from('files')
+        .select('storage_path')
+        .eq('batch_id', batchId);
+      
+      if (fileData && fileData.length > 0) {
+        const paths = fileData.map(f => f.storage_path);
+        await supabase.storage.from('transfers').remove(paths);
+      }
+
+      // Delete from database
+      const { error } = await supabase
+        .from('files')
+        .delete()
+        .eq('batch_id', batchId);
+
+      if (error) throw error;
+
+      setBatches(prev => prev.filter(b => b.batch_id !== batchId));
+      toast.success("Batch deleted successfully!");
+    } catch {
+      toast.error("Failed to delete batch");
+    }
   };
 
   const toggleBatch = (batchId: string) => {
@@ -228,6 +256,15 @@ const History = () => {
                         >
                           <Share2 className="w-4 h-4" />
                           Copy Link
+                        </Button>
+                        <Button
+                          onClick={() => deleteBatch(batch.batch_id)}
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
                         </Button>
                       </div>
                     </div>

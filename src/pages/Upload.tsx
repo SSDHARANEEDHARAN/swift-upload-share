@@ -4,7 +4,7 @@ import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogIn, History, FileText, Share2, ChevronDown, ChevronUp, File, Calendar } from "lucide-react";
+import { LogIn, History, FileText, Share2, ChevronDown, ChevronUp, File, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -97,6 +97,40 @@ const Upload = () => {
     const link = `${window.location.origin}/download/${token}`;
     navigator.clipboard.writeText(link);
     toast.success("Link copied to clipboard!");
+  };
+
+  const deleteBatch = async (batchId: string, files: FileInfo[]) => {
+    try {
+      // Delete files from storage
+      const storagePaths = files.map(f => {
+        // Reconstruct storage path from batch info
+        return `${user.id}/${f.id}`;
+      });
+      
+      // Get actual storage paths from database
+      const { data: fileData } = await supabase
+        .from('files')
+        .select('storage_path')
+        .eq('batch_id', batchId);
+      
+      if (fileData && fileData.length > 0) {
+        const paths = fileData.map(f => f.storage_path);
+        await supabase.storage.from('transfers').remove(paths);
+      }
+
+      // Delete from database
+      const { error } = await supabase
+        .from('files')
+        .delete()
+        .eq('batch_id', batchId);
+
+      if (error) throw error;
+
+      setBatches(prev => prev.filter(b => b.batch_id !== batchId));
+      toast.success("Batch deleted successfully!");
+    } catch {
+      toast.error("Failed to delete batch");
+    }
   };
 
   const toggleBatch = (batchId: string) => {
@@ -214,6 +248,14 @@ const Upload = () => {
                         >
                           <Share2 className="w-3 h-3" />
                           <span className="hidden sm:inline">Copy</span>
+                        </Button>
+                        <Button
+                          onClick={() => deleteBatch(batch.batch_id, batch.files)}
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
