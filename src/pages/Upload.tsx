@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogIn, History, FileText, Share2, ChevronDown, ChevronUp, File, Trash2 } from "lucide-react";
+import { FileText, Share2, ChevronDown, ChevronUp, File, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -43,7 +44,6 @@ const Upload = () => {
 
       if (error) throw error;
 
-      // Group files by batch
       const batchMap = new Map<string, UploadBatch>();
       data?.forEach((file) => {
         if (!batchMap.has(file.batch_id)) {
@@ -70,7 +70,7 @@ const Upload = () => {
 
       setBatches(Array.from(batchMap.values()));
     } catch {
-      // Silent fail - don't toast on history load failure
+      // Silent fail
     }
   }, []);
 
@@ -101,13 +101,6 @@ const Upload = () => {
 
   const deleteBatch = async (batchId: string, files: FileInfo[]) => {
     try {
-      // Delete files from storage
-      const storagePaths = files.map(f => {
-        // Reconstruct storage path from batch info
-        return `${user.id}/${f.id}`;
-      });
-      
-      // Get actual storage paths from database
       const { data: fileData } = await supabase
         .from('files')
         .select('storage_path')
@@ -118,7 +111,6 @@ const Upload = () => {
         await supabase.storage.from('transfers').remove(paths);
       }
 
-      // Delete from database
       const { error } = await supabase
         .from('files')
         .delete()
@@ -151,7 +143,6 @@ const Upload = () => {
     return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
   };
 
-  // Callback to refresh history after upload
   const handleUploadComplete = useCallback(() => {
     if (user) {
       loadHistory(user.id);
@@ -163,137 +154,121 @@ const Upload = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-[hsl(252,100%,97%)] flex flex-col items-center p-4 pt-20">
-      {user ? (
-        <Header userEmail={user.email} />
-      ) : (
-        <div className="absolute top-4 right-4 flex gap-2">
-          <Button
-            onClick={() => navigate('/auth')}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <LogIn className="w-4 h-4" />
-            Login
-          </Button>
-        </div>
-      )}
-
-      {user && (
-        <Button
-          onClick={() => navigate('/history')}
-          variant="outline"
-          size="sm"
-          className="absolute top-4 left-4 gap-2"
-        >
-          <History className="w-4 h-4" />
-          History
-        </Button>
-      )}
-
-      <div className="text-center mb-8 mt-8">
-        <h1 className="text-7xl font-display font-bold mb-4 bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] bg-clip-text text-transparent animate-fade-in-up tracking-tight">
-          Go
-        </h1>
-        <p className="text-xl text-muted-foreground animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          Share files quickly and securely
-        </p>
-        {!user && (
-          <p className="text-sm text-muted-foreground mt-3 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            No login needed for files up to 500MB
-          </p>
-        )}
-      </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header user={user} />
       
-      <FileUpload user={user} onUploadComplete={handleUploadComplete} />
-
-      {/* Recent Uploads Section */}
-      {user && batches.length > 0 && (
-        <div className="w-full max-w-2xl mt-12 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-          <h2 className="text-2xl font-bold mb-4 text-foreground">Recent Uploads</h2>
-          <div className="space-y-3">
-            {batches.slice(0, 5).map((batch) => {
-              const isExpanded = expandedBatches.has(batch.batch_id);
-              return (
-                <Card key={batch.batch_id} className="overflow-hidden hover:shadow-lg transition-all">
-                  <div 
-                    className="p-4 cursor-pointer"
-                    onClick={() => toggleBatch(batch.batch_id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-4 h-4 text-primary" />
-                        <span className="font-medium">
-                          {batch.file_count} file{batch.file_count > 1 ? 's' : ''}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatFileSize(batch.total_size)}
-                        </span>
-                        {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-xs text-muted-foreground hidden sm:inline">
-                          {format(new Date(batch.created_at), 'MMM d, HH:mm')}
-                        </span>
-                        <Button
-                          onClick={() => copyLink(batch.share_token)}
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1"
-                        >
-                          <Share2 className="w-3 h-3" />
-                          <span className="hidden sm:inline">Copy</span>
-                        </Button>
-                        <Button
-                          onClick={() => deleteBatch(batch.batch_id, batch.files)}
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {isExpanded && (
-                    <div className="border-t bg-muted/30 px-4 py-3">
-                      <div className="space-y-1">
-                        {batch.files.map((file) => (
-                          <div 
-                            key={file.id} 
-                            className="flex items-center gap-2 p-2 rounded-md bg-background/50 text-sm"
-                          >
-                            <File className="w-3 h-3 text-primary shrink-0" />
-                            <span className="flex-1 truncate">{file.filename}</span>
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {formatFileSize(file.file_size)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
+      <main className="flex-1 pt-24 pb-16 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto">
+          {/* Hero */}
+          <div className="text-center mb-10">
+            <h1 className="text-4xl sm:text-5xl font-display font-bold text-foreground mb-4 animate-fade-in-up">
+              Upload & Share
+            </h1>
+            <p className="text-lg text-muted-foreground animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+              Share files quickly and securely with anyone
+            </p>
+            {!user && (
+              <p className="text-sm text-muted-foreground mt-2 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+                No login needed for files up to 500MB
+              </p>
+            )}
           </div>
-          {batches.length > 5 && (
-            <Button
-              onClick={() => navigate('/history')}
-              variant="link"
-              className="mt-4 w-full"
-            >
-              View all {batches.length} uploads →
-            </Button>
+          
+          {/* Upload Component */}
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <FileUpload user={user} onUploadComplete={handleUploadComplete} />
+          </div>
+
+          {/* Recent Uploads */}
+          {user && batches.length > 0 && (
+            <div className="mt-16 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+              <h2 className="text-2xl font-display font-bold mb-6">Recent Uploads</h2>
+              <div className="space-y-3">
+                {batches.slice(0, 5).map((batch) => {
+                  const isExpanded = expandedBatches.has(batch.batch_id);
+                  return (
+                    <Card key={batch.batch_id} className="overflow-hidden hover:border-primary/30 transition-all">
+                      <div 
+                        className="p-4 cursor-pointer"
+                        onClick={() => toggleBatch(batch.batch_id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <FileText className="w-4 h-4 text-primary" />
+                            <span className="font-medium">
+                              {batch.file_count} file{batch.file_count > 1 ? 's' : ''}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {formatFileSize(batch.total_size)}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-xs text-muted-foreground hidden sm:inline">
+                              {format(new Date(batch.created_at), 'MMM d, HH:mm')}
+                            </span>
+                            <Button
+                              onClick={() => copyLink(batch.share_token)}
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1"
+                            >
+                              <Share2 className="w-3 h-3" />
+                              <span className="hidden sm:inline">Copy</span>
+                            </Button>
+                            <Button
+                              onClick={() => deleteBatch(batch.batch_id, batch.files)}
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {isExpanded && (
+                        <div className="border-t bg-muted/30 px-4 py-3">
+                          <div className="space-y-1">
+                            {batch.files.map((file) => (
+                              <div 
+                                key={file.id} 
+                                className="flex items-center gap-2 p-2 rounded-md bg-background/50 text-sm"
+                              >
+                                <File className="w-3 h-3 text-primary shrink-0" />
+                                <span className="flex-1 truncate">{file.filename}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">
+                                  {formatFileSize(file.file_size)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+              {batches.length > 5 && (
+                <Button
+                  onClick={() => navigate('/history')}
+                  variant="link"
+                  className="mt-4 w-full"
+                >
+                  View all {batches.length} uploads →
+                </Button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </main>
+
+      <Footer />
     </div>
   );
 };
