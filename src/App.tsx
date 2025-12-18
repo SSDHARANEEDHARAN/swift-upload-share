@@ -13,16 +13,16 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const pageVariants = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 10 },
   animate: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.4 }
+    transition: { duration: 0.3 }
   },
   exit: { 
     opacity: 0, 
-    y: -20,
-    transition: { duration: 0.3 }
+    y: -10,
+    transition: { duration: 0.2 }
   },
 };
 
@@ -34,6 +34,19 @@ const AnimatedRoutes = () => {
       <Routes location={location} key={location.pathname}>
         <Route
           path="/"
+          element={
+            <motion.div
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <Index />
+            </motion.div>
+          }
+        />
+        <Route
+          path="/upload"
           element={
             <motion.div
               variants={pageVariants}

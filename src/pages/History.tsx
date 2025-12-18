@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, FileText, Share2, ChevronDown, ChevronUp, File, Trash2 } from "lucide-react";
+import { Calendar, FileText, Share2, ChevronDown, ChevronUp, File, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,7 +59,6 @@ const History = () => {
 
       if (error) throw error;
 
-      // Group files by batch
       const batchMap = new Map<string, UploadBatch>();
       data?.forEach((file) => {
         if (!batchMap.has(file.batch_id)) {
@@ -98,7 +99,6 @@ const History = () => {
 
   const deleteBatch = async (batchId: string) => {
     try {
-      // Get storage paths first
       const { data: fileData } = await supabase
         .from('files')
         .select('storage_path')
@@ -109,7 +109,6 @@ const History = () => {
         await supabase.storage.from('transfers').remove(paths);
       }
 
-      // Delete from database
       const { error } = await supabase
         .from('files')
         .delete()
@@ -144,164 +143,161 @@ const History = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-[hsl(252,100%,97%)] p-4">
-        <div className="max-w-4xl mx-auto py-8">
-          <Skeleton className="h-9 w-32 mb-6" />
-          
-          <div className="mb-8">
-            <Skeleton className="h-10 w-64 mb-2" />
-            <Skeleton className="h-5 w-80" />
-          </div>
-
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Skeleton className="h-5 w-5 rounded-full" />
-                      <Skeleton className="h-6 w-32" />
-                      <Skeleton className="h-6 w-20 rounded-full" />
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header user={user} />
+        <main className="flex-1 pt-24 pb-16 px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto">
+            <Skeleton className="h-9 w-32 mb-6" />
+            <div className="mb-8">
+              <Skeleton className="h-10 w-64 mb-2" />
+              <Skeleton className="h-5 w-80" />
+            </div>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Skeleton className="h-5 w-5 rounded-full" />
+                        <Skeleton className="h-6 w-32" />
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-4 w-20" />
-                    </div>
+                    <Skeleton className="h-9 w-28" />
                   </div>
-                  <Skeleton className="h-9 w-28" />
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
+        </main>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-[hsl(252,100%,97%)] p-4">
-      <div className="max-w-4xl mx-auto py-8">
-        <Button
-          onClick={() => navigate('/')}
-          variant="outline"
-          size="sm"
-          className="mb-6 gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Upload
-        </Button>
-
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-[hsl(280,85%,65%)] bg-clip-text text-transparent">
-            Upload History
-          </h1>
-          <p className="text-muted-foreground">
-            View and manage your uploaded file batches
-          </p>
-        </div>
-
-        {batches.length === 0 ? (
-          <Card className="p-12 text-center">
-            <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-xl font-semibold mb-2">No uploads yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Start uploading files to see your history here
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header user={user} />
+      
+      <main className="flex-1 pt-24 pb-16 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-4xl font-display font-bold mb-2 text-foreground">
+              Upload History
+            </h1>
+            <p className="text-muted-foreground">
+              View and manage your uploaded file batches
             </p>
-            <Button onClick={() => navigate('/')}>Upload Files</Button>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {batches.map((batch) => {
-              const isExpanded = expandedBatches.has(batch.batch_id);
-              return (
-                <Card key={batch.batch_id} className="overflow-hidden hover:shadow-[var(--shadow-glow)] transition-all">
-                  <div 
-                    className="p-6 cursor-pointer"
-                    onClick={() => toggleBatch(batch.batch_id)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <FileText className="w-5 h-5 text-primary" />
-                          <h3 className="font-semibold text-lg">
-                            {batch.file_count} file{batch.file_count > 1 ? 's' : ''}
-                          </h3>
-                          {batch.is_finalized && (
-                            <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
-                              Finalized
-                            </span>
-                          )}
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {format(new Date(batch.created_at), 'PPp')}
-                          </div>
-                          <div>
-                            {formatFileSize(batch.total_size)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          onClick={() => copyLink(batch.share_token)}
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                        >
-                          <Share2 className="w-4 h-4" />
-                          Copy Link
-                        </Button>
-                        <Button
-                          onClick={() => deleteBatch(batch.batch_id)}
-                          variant="outline"
-                          size="sm"
-                          className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Expanded file list */}
-                  {isExpanded && (
-                    <div className="border-t bg-muted/30 px-6 py-4">
-                      <div className="space-y-2">
-                        {batch.files.map((file) => (
-                          <div 
-                            key={file.id} 
-                            className="flex items-center gap-3 p-3 rounded-lg bg-background/50 hover:bg-background transition-colors"
-                          >
-                            <File className="w-4 h-4 text-primary shrink-0" />
-                            <span className="flex-1 truncate font-medium text-sm">
-                              {file.filename}
-                            </span>
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {formatFileSize(file.file_size)}
-                            </span>
-                            {file.file_type && (
-                              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
-                                {file.file_type.split('/')[1]?.toUpperCase() || file.file_type}
+          </div>
+
+          {batches.length === 0 ? (
+            <Card className="p-12 text-center">
+              <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-xl font-semibold mb-2">No uploads yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Start uploading files to see your history here
+              </p>
+              <Button onClick={() => navigate('/upload')}>Upload Files</Button>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {batches.map((batch) => {
+                const isExpanded = expandedBatches.has(batch.batch_id);
+                return (
+                  <Card key={batch.batch_id} className="overflow-hidden hover:border-primary/30 transition-all">
+                    <div 
+                      className="p-6 cursor-pointer"
+                      onClick={() => toggleBatch(batch.batch_id)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <FileText className="w-5 h-5 text-primary" />
+                            <h3 className="font-semibold text-lg">
+                              {batch.file_count} file{batch.file_count > 1 ? 's' : ''}
+                            </h3>
+                            {batch.is_finalized && (
+                              <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
+                                Finalized
                               </span>
                             )}
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            )}
                           </div>
-                        ))}
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {format(new Date(batch.created_at), 'PPp')}
+                            </div>
+                            <div>
+                              {formatFileSize(batch.total_size)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            onClick={() => copyLink(batch.share_token)}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                          >
+                            <Share2 className="w-4 h-4" />
+                            Copy Link
+                          </Button>
+                          <Button
+                            onClick={() => deleteBatch(batch.batch_id)}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                    
+                    {isExpanded && (
+                      <div className="border-t bg-muted/30 px-6 py-4">
+                        <div className="space-y-2">
+                          {batch.files.map((file) => (
+                            <div 
+                              key={file.id} 
+                              className="flex items-center gap-3 p-3 rounded-lg bg-background/50 hover:bg-background transition-colors"
+                            >
+                              <File className="w-4 h-4 text-primary shrink-0" />
+                              <span className="flex-1 truncate font-medium text-sm">
+                                {file.filename}
+                              </span>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                {formatFileSize(file.file_size)}
+                              </span>
+                              {file.file_type && (
+                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
+                                  {file.file_type.split('/')[1]?.toUpperCase() || file.file_type}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };

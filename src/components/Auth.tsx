@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, HandMetal, DoorOpen } from "lucide-react";
 import { z } from "zod";
 
-// Validation schemas
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -38,7 +39,6 @@ export const Auth = () => {
     setLoading(true);
 
     try {
-      // Validate input based on login/signup mode
       const schema = isLogin ? loginSchema : signupSchema;
       const validationResult = schema.safeParse({
         email,
@@ -62,11 +62,10 @@ export const Auth = () => {
 
         if (error) throw error;
 
-        // Show door animation
         setShowDoor(true);
         setTimeout(() => {
-          toast.success("Welcome back! 🤝");
-          navigate("/");
+          toast.success("Welcome back!");
+          navigate("/upload");
         }, 1200);
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -80,18 +79,16 @@ export const Auth = () => {
         if (error) throw error;
 
         if (data.user) {
-          // Create profile
           await supabase.from("profiles").insert({
             id: data.user.id,
             email: validatedData.email,
             display_name: (validatedData as z.infer<typeof signupSchema>).displayName || validatedData.email.split("@")[0],
           });
 
-          // Show door animation
           setShowDoor(true);
           setTimeout(() => {
-            toast.success("Account created! Welcome! 🤝");
-            navigate("/");
+            toast.success("Account created! Welcome!");
+            navigate("/upload");
           }, 1200);
         }
       }
@@ -103,120 +100,129 @@ export const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-[hsl(252,100%,97%)] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header />
+      
       {/* Door Animation Overlay */}
       {showDoor && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="animate-door-open">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="animate-fade-in">
             <DoorOpen className="w-32 h-32 text-primary" />
           </div>
-          <div className="absolute animate-handshake delay-300">
-            <HandMetal className="w-24 h-24 text-accent" />
+          <div className="absolute animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <HandMetal className="w-24 h-24 text-primary" />
           </div>
         </div>
       )}
 
-      <Card className="w-full max-w-md p-8 shadow-[var(--shadow-elevated)] backdrop-blur-sm bg-card/95 animate-fade-in-up border-2">
-        <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary via-accent to-[hsl(310,80%,70%)] flex items-center justify-center shadow-[var(--shadow-glow)]">
-            <HandMetal className="w-12 h-12 text-white" />
+      <main className="flex-1 flex items-center justify-center p-4 pt-24">
+        <Card className="w-full max-w-md p-8 animate-fade-in-up">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <HandMetal className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-3xl font-display font-bold text-foreground mb-2">
+              {isLogin ? "Welcome Back" : "Create Account"}
+            </h1>
+            <p className="text-muted-foreground">
+              {isLogin ? "Sign in to continue" : "Start sharing files up to 2GB"}
+            </p>
           </div>
-          <h1 className="text-4xl font-display font-bold bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] bg-clip-text text-transparent mb-3">
-            {isLogin ? "Welcome Back" : "Join Go"}
-          </h1>
-          <p className="text-base text-muted-foreground">
-            {isLogin ? "Enter to continue your journey" : "Start sharing files up to 2GB"}
-          </p>
-        </div>
 
-        <form onSubmit={handleAuth} className="space-y-4">
-          {!isLogin && (
+          <form onSubmit={handleAuth} className="space-y-4">
+            {!isLogin && (
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Display Name
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Your name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  disabled={loading}
+                  maxLength={100}
+                  className="h-12 bg-secondary border-border"
+                />
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
-                Display Name
+                Email
               </label>
               <Input
-                type="text"
-                placeholder="Your name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                maxLength={100}
-                className="h-12"
+                required
+                className="h-12 bg-secondary border-border"
               />
             </div>
-          )}
 
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">
-              Email
-            </label>
-            <Input
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Password
+              </label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
+                minLength={isLogin ? 6 : 8}
+                className="h-12 bg-secondary border-border"
+              />
+              {!isLogin && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Min 8 characters, include uppercase and number
+                </p>
+              )}
+            </div>
+
+            <Button
+              type="submit"
               disabled={loading}
-              required
-              className="h-12"
-            />
+              className="w-full h-12 text-base font-semibold"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  {isLogin ? "Signing in..." : "Creating account..."}
+                </>
+              ) : (
+                <>{isLogin ? "Sign In" : "Create Account"}</>
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              disabled={loading}
+              className="text-sm text-primary hover:underline"
+            >
+              {isLogin
+                ? "Don't have an account? Sign up"
+                : "Already have an account? Sign in"}
+            </button>
           </div>
 
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">
-              Password
-            </label>
-            <Input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              required
-              minLength={isLogin ? 6 : 8}
-              className="h-12"
-            />
-            {!isLogin && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Min 8 characters, include uppercase and number
-              </p>
-            )}
+          <div className="mt-6 pt-6 border-t border-border text-center">
+            <p className="text-xs text-muted-foreground">
+              Anonymous users can share up to 500MB
+            </p>
+            <Link to="/upload" className="text-xs text-primary hover:underline mt-1 inline-block">
+              Skip and upload without an account →
+            </Link>
           </div>
+        </Card>
+      </main>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary via-accent to-[hsl(310,80%,70%)] hover:opacity-90 hover:scale-[1.02] transition-all shadow-[var(--shadow-glow)]"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                {isLogin ? "Signing in..." : "Creating account..."}
-              </>
-            ) : (
-              <>{isLogin ? "Sign In" : "Create Account"}</>
-            )}
-          </Button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            disabled={loading}
-            className="text-sm text-primary hover:underline"
-          >
-            {isLogin
-              ? "Don't have an account? Sign up"
-              : "Already have an account? Sign in"}
-          </button>
-        </div>
-
-        <div className="mt-6 pt-6 border-t border-border text-center">
-          <p className="text-xs text-muted-foreground">
-            Anonymous users can share up to 500MB
-          </p>
-        </div>
-      </Card>
+      <Footer />
     </div>
   );
 };
