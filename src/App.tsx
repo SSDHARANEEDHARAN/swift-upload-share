@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Download from "./pages/Download";
@@ -12,6 +13,7 @@ import History from "./pages/History";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import HelpCenter from "./pages/HelpCenter";
+import Dashboard from "./pages/Dashboard";
 
 // Image Tools
 import EditImage from "./pages/tools/EditImage";
@@ -91,7 +93,8 @@ const AnimatedRoutes = () => {
         <Route path="/tools/pdf-to-ppt" element={<AnimatedPage><PDFToPPT /></AnimatedPage>} />
         <Route path="/tools/pdf-to-pdfa" element={<AnimatedPage><PDFToPDFA /></AnimatedPage>} />
         
-        {/* Help */}
+        {/* User Pages */}
+        <Route path="/dashboard" element={<AnimatedPage><Dashboard /></AnimatedPage>} />
         <Route path="/help" element={<AnimatedPage><HelpCenter /></AnimatedPage>} />
         
         <Route path="*" element={<AnimatedPage><NotFound /></AnimatedPage>} />
@@ -103,13 +106,15 @@ const AnimatedRoutes = () => {
 const App = () => {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AnimatedRoutes />
-        </BrowserRouter>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AnimatedRoutes />
+          </BrowserRouter>
+        </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 };
