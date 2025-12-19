@@ -23,6 +23,7 @@ import RemoveBackground from "./pages/tools/RemoveBackground";
 import VectorizeImage from "./pages/tools/VectorizeImage";
 import ImageTo3D from "./pages/tools/ImageTo3D";
 import ImageToVideo from "./pages/tools/ImageToVideo";
+import ImageToText from "./pages/tools/ImageToText";
 
 // PDF Tools
 import CompressPDF from "./pages/tools/CompressPDF";
@@ -79,6 +80,7 @@ const AnimatedRoutes = () => {
         <Route path="/tools/vectorize-image" element={<AnimatedPage><VectorizeImage /></AnimatedPage>} />
         <Route path="/tools/image-to-3d" element={<AnimatedPage><ImageTo3D /></AnimatedPage>} />
         <Route path="/tools/image-to-video" element={<AnimatedPage><ImageToVideo /></AnimatedPage>} />
+        <Route path="/tools/image-to-text" element={<AnimatedPage><ImageToText /></AnimatedPage>} />
         
         {/* PDF Tools */}
         <Route path="/tools/compress-pdf" element={<AnimatedPage><CompressPDF /></AnimatedPage>} />
