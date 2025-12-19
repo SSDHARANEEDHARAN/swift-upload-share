@@ -1,0 +1,164 @@
+import { useState, useEffect } from "react";
+import { ToolPageLayout } from "@/components/ToolPageLayout";
+import { ImageDropzone } from "@/components/ImageDropzone";
+import { ProcessingStatus } from "@/components/ProcessingStatus";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Download, Palette } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const RecolorImage = () => {
+  const [user, setUser] = useState<any>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [fromColor, setFromColor] = useState("");
+  const [toColor, setToColor] = useState("");
+  const [result, setResult] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
+  const [statusMessage, setStatusMessage] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+  }, []);
+
+  const handleImageSelect = (file: File) => {
+    setSelectedImage(file);
+    setResult(null);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClear = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setResult(null);
+    setFromColor("");
+    setToColor("");
+    setStatus("idle");
+  };
+
+  const handleRecolor = async () => {
+    if (!imagePreview || !fromColor.trim() || !toColor.trim()) {
+      toast.error("Please upload an image and specify colors to swap");
+      return;
+    }
+
+    setStatus("processing");
+    setStatusMessage(`Changing ${fromColor} to ${toColor}...`);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("recolor-image", {
+        body: { image: imagePreview, fromColor: fromColor.trim(), toColor: toColor.trim() },
+      });
+
+      if (error) throw error;
+
+      if (data.image) {
+        const imageUrl = data.image.startsWith("data:") 
+          ? data.image 
+          : data.image.startsWith("http")
+          ? data.image
+          : `data:image/png;base64,${data.image}`;
+        setResult(imageUrl);
+        setStatus("success");
+        setStatusMessage("Image recolored successfully!");
+        toast.success("Image recolored successfully!");
+      } else {
+        throw new Error("No image returned");
+      }
+    } catch (error: any) {
+      console.error("Recolor error:", error);
+      setStatus("error");
+      setStatusMessage(error.message || "Failed to recolor image");
+      toast.error("Failed to recolor image");
+    }
+  };
+
+  const handleDownload = () => {
+    if (!result) return;
+    const link = document.createElement("a");
+    link.href = result;
+    link.download = "recolored-image.png";
+    link.click();
+  };
+
+  return (
+    <ToolPageLayout
+      title="Recolor Image with AI"
+      description="Easily replace the color of any object in your image using our free online AI photo recolor tool. Quickly select and swap colors in seconds."
+      user={user}
+    >
+      <div className="space-y-6">
+        <ImageDropzone
+          onImageSelect={handleImageSelect}
+          preview={imagePreview}
+          onClear={handleClear}
+        />
+
+        {imagePreview && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-2">
+                  Original Color
+                </label>
+                <Input
+                  placeholder="e.g., red, blue, green..."
+                  value={fromColor}
+                  onChange={(e) => setFromColor(e.target.value)}
+                  className="bg-secondary/50"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-2">
+                  New Color
+                </label>
+                <Input
+                  placeholder="e.g., purple, gold, pink..."
+                  value={toColor}
+                  onChange={(e) => setToColor(e.target.value)}
+                  className="bg-secondary/50"
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleRecolor}
+              disabled={status === "processing" || !fromColor.trim() || !toColor.trim()}
+              className="w-full gap-2"
+              size="lg"
+            >
+              <Palette className="w-5 h-5" />
+              Recolor Image
+            </Button>
+          </div>
+        )}
+
+        <ProcessingStatus status={status} message={statusMessage} />
+
+        {result && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-foreground">Recolored Image</h3>
+            <img
+              src={result}
+              alt="Recolored result"
+              className="w-full max-h-96 object-contain rounded-xl border border-border"
+            />
+            <Button onClick={handleDownload} className="w-full gap-2" variant="outline">
+              <Download className="w-5 h-5" />
+              Download Recolored Image
+            </Button>
+          </div>
+        )}
+      </div>
+    </ToolPageLayout>
+  );
+};
+
+export default RecolorImage;
