@@ -10,6 +10,28 @@ import History from "./pages/History";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
+// Image Tools
+import EditImage from "./pages/tools/EditImage";
+import UpscaleImage from "./pages/tools/UpscaleImage";
+import RecolorImage from "./pages/tools/RecolorImage";
+import RemoveBackground from "./pages/tools/RemoveBackground";
+import VectorizeImage from "./pages/tools/VectorizeImage";
+import ImageTo3D from "./pages/tools/ImageTo3D";
+import ImageToVideo from "./pages/tools/ImageToVideo";
+
+// PDF Tools
+import CompressPDF from "./pages/tools/CompressPDF";
+import ImagesToPDF from "./pages/tools/ImagesToPDF";
+import PasswordProtectPDF from "./pages/tools/PasswordProtectPDF";
+import WordToPDF from "./pages/tools/WordToPDF";
+import ExcelToPDF from "./pages/tools/ExcelToPDF";
+import PPTToPDF from "./pages/tools/PPTToPDF";
+import PDFToWord from "./pages/tools/PDFToWord";
+import PDFToExcel from "./pages/tools/PDFToExcel";
+import PDFToPPT from "./pages/tools/PDFToPPT";
+import PDFToPDFA from "./pages/tools/PDFToPDFA";
+import SetPDFPermissions from "./pages/tools/SetPDFPermissions";
+
 const queryClient = new QueryClient();
 
 const pageVariants = {
@@ -26,90 +48,47 @@ const pageVariants = {
   },
 };
 
+const AnimatedPage = ({ children }: { children: React.ReactNode }) => (
+  <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+    {children}
+  </motion.div>
+);
+
 const AnimatedRoutes = () => {
   const location = useLocation();
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route
-          path="/"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              <Index />
-            </motion.div>
-          }
-        />
-        <Route
-          path="/upload"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              <Upload />
-            </motion.div>
-          }
-        />
-        <Route
-          path="/auth"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              <Auth />
-            </motion.div>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              <History />
-            </motion.div>
-          }
-        />
-        <Route
-          path="/download/:token"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              <Download />
-            </motion.div>
-          }
-        />
-        <Route
-          path="*"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              <NotFound />
-            </motion.div>
-          }
-        />
+        <Route path="/" element={<AnimatedPage><Index /></AnimatedPage>} />
+        <Route path="/upload" element={<AnimatedPage><Upload /></AnimatedPage>} />
+        <Route path="/auth" element={<AnimatedPage><Auth /></AnimatedPage>} />
+        <Route path="/history" element={<AnimatedPage><History /></AnimatedPage>} />
+        <Route path="/download/:token" element={<AnimatedPage><Download /></AnimatedPage>} />
+        
+        {/* Image Tools */}
+        <Route path="/tools/edit-image" element={<AnimatedPage><EditImage /></AnimatedPage>} />
+        <Route path="/tools/upscale-image" element={<AnimatedPage><UpscaleImage /></AnimatedPage>} />
+        <Route path="/tools/recolor-image" element={<AnimatedPage><RecolorImage /></AnimatedPage>} />
+        <Route path="/tools/remove-background" element={<AnimatedPage><RemoveBackground /></AnimatedPage>} />
+        <Route path="/tools/vectorize-image" element={<AnimatedPage><VectorizeImage /></AnimatedPage>} />
+        <Route path="/tools/image-to-3d" element={<AnimatedPage><ImageTo3D /></AnimatedPage>} />
+        <Route path="/tools/image-to-video" element={<AnimatedPage><ImageToVideo /></AnimatedPage>} />
+        
+        {/* PDF Tools */}
+        <Route path="/tools/compress-pdf" element={<AnimatedPage><CompressPDF /></AnimatedPage>} />
+        <Route path="/tools/images-to-pdf" element={<AnimatedPage><ImagesToPDF /></AnimatedPage>} />
+        <Route path="/tools/password-protect-pdf" element={<AnimatedPage><PasswordProtectPDF /></AnimatedPage>} />
+        <Route path="/tools/set-pdf-permissions" element={<AnimatedPage><SetPDFPermissions /></AnimatedPage>} />
+        <Route path="/tools/word-to-pdf" element={<AnimatedPage><WordToPDF /></AnimatedPage>} />
+        <Route path="/tools/excel-to-pdf" element={<AnimatedPage><ExcelToPDF /></AnimatedPage>} />
+        <Route path="/tools/ppt-to-pdf" element={<AnimatedPage><PPTToPDF /></AnimatedPage>} />
+        <Route path="/tools/pdf-to-word" element={<AnimatedPage><PDFToWord /></AnimatedPage>} />
+        <Route path="/tools/pdf-to-excel" element={<AnimatedPage><PDFToExcel /></AnimatedPage>} />
+        <Route path="/tools/pdf-to-ppt" element={<AnimatedPage><PDFToPPT /></AnimatedPage>} />
+        <Route path="/tools/pdf-to-pdfa" element={<AnimatedPage><PDFToPDFA /></AnimatedPage>} />
+        
+        <Route path="*" element={<AnimatedPage><NotFound /></AnimatedPage>} />
       </Routes>
     </AnimatePresence>
   );
