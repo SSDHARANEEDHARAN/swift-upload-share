@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, User, Upload, History, Menu, X } from "lucide-react";
+import { LogOut, User, Upload, History, Menu, X, LayoutDashboard } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface HeaderProps {
   user?: { email?: string } | null;
@@ -78,9 +79,19 @@ export const Header = ({ user }: HeaderProps) => {
           </nav>
 
           {/* Auth Buttons */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
+            <ThemeToggle />
             {user ? (
               <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                  className="gap-2"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Button>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground px-3 py-1.5 rounded-lg bg-secondary">
                   <User className="w-4 h-4" />
                   <span className="max-w-32 truncate">{user.email}</span>
