@@ -40,7 +40,7 @@ export const Footer = () => {
             <h4 className="font-display font-semibold text-sm mb-4">Resources</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link to="/" className="hover:text-foreground transition-colors">
+                <Link to="/help" className="hover:text-foreground transition-colors">
                   Help Center
                 </Link>
               </li>
