@@ -4,9 +4,11 @@ import { ImageDropzone } from "@/components/ImageDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, Wand2 } from "lucide-react";
+import { Download, Wand2, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80";
 
 const EditImage = () => {
   const [user, setUser] = useState<any>(null);
@@ -39,6 +41,27 @@ const EditImage = () => {
     setResult(null);
     setPrompt("");
     setStatus("idle");
+  };
+
+  const handleUseSampleImage = async () => {
+    setStatus("processing");
+    setStatusMessage("Loading sample image...");
+    
+    try {
+      const response = await fetch(SAMPLE_IMAGE_URL);
+      const blob = await response.blob();
+      const file = new File([blob], "sample-image.jpg", { type: "image/jpeg" });
+      
+      setSelectedImage(file);
+      setImagePreview(SAMPLE_IMAGE_URL);
+      setStatus("idle");
+      setStatusMessage("");
+      toast.success("Sample image loaded!");
+    } catch (error) {
+      setStatus("error");
+      setStatusMessage("Failed to load sample image");
+      toast.error("Failed to load sample image");
+    }
   };
 
   const handleEdit = async () => {
@@ -91,6 +114,18 @@ const EditImage = () => {
       user={user}
     >
       <div className="space-y-6">
+        {!selectedImage && (
+          <Button
+            variant="outline"
+            onClick={handleUseSampleImage}
+            className="w-full gap-2"
+            disabled={status === "processing"}
+          >
+            <Image className="w-5 h-5" />
+            Use Sample Image
+          </Button>
+        )}
+
         <ImageDropzone
           onImageSelect={handleImageSelect}
           preview={imagePreview}
