@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ToolCard } from "@/components/ToolCard";
@@ -170,11 +171,11 @@ const Index = () => {
             <p className="text-muted-foreground mb-8">Start using our powerful tools instantly. No signup required for most features.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild>
-                <a href="/upload" className="gap-2"><Upload className="w-5 h-5" />Start Uploading</a>
+                <Link to="/upload" className="gap-2"><Upload className="w-5 h-5" />Start Uploading</Link>
               </Button>
               {!user && (
                 <Button size="lg" variant="outline" asChild>
-                  <a href="/auth">Create Free Account</a>
+                  <Link to="/auth">Create Free Account</Link>
                 </Button>
               )}
             </div>
