@@ -26,7 +26,8 @@ import {
   Settings,
   FileSpreadsheet,
   Presentation,
-  Archive
+  Archive,
+  Type
 } from "lucide-react";
 
 const imageTools = [
@@ -34,6 +35,7 @@ const imageTools = [
   { title: "Upscale Image with AI", description: "Upscale your images up to 4x their original size with AI.", icon: ZoomIn, href: "/tools/upscale-image", badge: "AI" },
   { title: "Recolor Image with AI", description: "Replace the color of any object in your image using AI.", icon: Palette, href: "/tools/recolor-image", badge: "AI" },
   { title: "Remove Image Background", description: "Remove image backgrounds instantly with our free AI tool.", icon: Eraser, href: "/tools/remove-background", badge: "AI" },
+  { title: "Image to Text (OCR)", description: "Extract text from images using optical character recognition.", icon: Type, href: "/tools/image-to-text" },
   { title: "Vectorize Image", description: "Turn your images into SVG vector files—right in your browser.", icon: PenTool, href: "/tools/vectorize-image" },
   { title: "Convert Image to 3D", description: "Generate a 3D model from any image for 3D rendering or printing.", icon: Box, href: "/tools/image-to-3d", badge: "AI" },
   { title: "Image to Video AI", description: "Turn static images into captivating videos with AI.", icon: Video, href: "/tools/image-to-video", badge: "AI" },
@@ -110,7 +112,7 @@ const Index = () => {
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 animate-fade-in-up">
               Explore Tools on{" "}
-              <span className="text-primary">FileTransfer</span>
+              <span className="text-primary">Rise to Live</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               Discover powerful tools to edit and transform your files. Images, documents, videos—everything you need in one place.
@@ -150,7 +152,7 @@ const Index = () => {
 
         <section className="px-4 sm:px-6 py-20 bg-card/50 border-y border-border">
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-3xl font-display font-bold text-center mb-12">Why Choose FileTransfer?</h2>
+            <h2 className="text-3xl font-display font-bold text-center mb-12">Why Choose Rise to Live?</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {features.map((feature, index) => (
                 <div key={feature.title} className="text-center animate-fade-in-up" style={{ animationDelay: `${0.1 + index * 0.1}s` }}>

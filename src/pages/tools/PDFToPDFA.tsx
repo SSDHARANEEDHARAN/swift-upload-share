@@ -38,8 +38,8 @@ const PDFToPDFA = () => {
       
       // Set metadata for PDF/A compliance (partial)
       pdfDoc.setTitle(selectedFile.name.replace(".pdf", ""));
-      pdfDoc.setCreator("FileTransfer PDF/A Converter");
-      pdfDoc.setProducer("FileTransfer");
+      pdfDoc.setCreator("Rise to Live PDF/A Converter");
+      pdfDoc.setProducer("Rise to Live");
       pdfDoc.setCreationDate(new Date());
       pdfDoc.setModificationDate(new Date());
 
