@@ -11,6 +11,7 @@ import Download from "./pages/Download";
 import History from "./pages/History";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import HelpCenter from "./pages/HelpCenter";
 
 // Image Tools
 import EditImage from "./pages/tools/EditImage";
@@ -89,6 +90,9 @@ const AnimatedRoutes = () => {
         <Route path="/tools/pdf-to-excel" element={<AnimatedPage><PDFToExcel /></AnimatedPage>} />
         <Route path="/tools/pdf-to-ppt" element={<AnimatedPage><PDFToPPT /></AnimatedPage>} />
         <Route path="/tools/pdf-to-pdfa" element={<AnimatedPage><PDFToPDFA /></AnimatedPage>} />
+        
+        {/* Help */}
+        <Route path="/help" element={<AnimatedPage><HelpCenter /></AnimatedPage>} />
         
         <Route path="*" element={<AnimatedPage><NotFound /></AnimatedPage>} />
       </Routes>
