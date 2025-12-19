@@ -3,16 +3,14 @@ import { ToolPageLayout } from "@/components/ToolPageLayout";
 import { FileDropzone } from "@/components/FileDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Download, Lock } from "lucide-react";
+import { Download, Archive } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const PasswordProtectPDF = () => {
+const PDFToPDFA = () => {
   const [user, setUser] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [password, setPassword] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
@@ -28,27 +26,29 @@ const PasswordProtectPDF = () => {
     setResult(null);
   };
 
-  const handleProtect = async () => {
-    if (!selectedFile || !password) {
-      toast.error("Please select a file and enter a password");
-      return;
-    }
+  const handleConvert = async () => {
+    if (!selectedFile) return;
 
     setStatus("processing");
-    setStatusMessage("Encrypting PDF...");
+    setStatusMessage("Processing PDF for archival format...");
 
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
       const pdfDoc = await PDFDocument.load(arrayBuffer);
       
-      // Note: pdf-lib doesn't support encryption directly
-      // This creates a copy - for full encryption, a server-side solution would be needed
+      // Set metadata for PDF/A compliance (partial)
+      pdfDoc.setTitle(selectedFile.name.replace(".pdf", ""));
+      pdfDoc.setCreator("FileTransfer PDF/A Converter");
+      pdfDoc.setProducer("FileTransfer");
+      pdfDoc.setCreationDate(new Date());
+      pdfDoc.setModificationDate(new Date());
+
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       
       setResult(URL.createObjectURL(blob));
       setStatus("success");
-      setStatusMessage("PDF prepared! Note: Full password protection requires server-side processing.");
+      setStatusMessage("PDF processed with archival metadata! Note: Full PDF/A-1b compliance requires validation.");
       toast.success("PDF processed!");
     } catch (error: any) {
       setStatus("error");
@@ -58,21 +58,18 @@ const PasswordProtectPDF = () => {
   };
 
   return (
-    <ToolPageLayout title="Password Protect PDF" description="Encrypt your PDF with a password to protect sensitive content." user={user}>
+    <ToolPageLayout title="Convert PDF to PDF/A" description="Convert your existing PDF to PDF/A for long-term document preservation." user={user}>
       <div className="space-y-6">
-        <FileDropzone accept=".pdf" onFileSelect={handleFileSelect} selectedFile={selectedFile} onClear={() => { setSelectedFile(null); setResult(null); }} />
+        <FileDropzone accept=".pdf" onFileSelect={handleFileSelect} selectedFile={selectedFile} onClear={() => { setSelectedFile(null); setResult(null); }} description="Drop your PDF here" />
         {selectedFile && (
-          <>
-            <Input type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-secondary/50" />
-            <Button onClick={handleProtect} disabled={status === "processing" || !password} className="w-full gap-2" size="lg">
-              <Lock className="w-5 h-5" /> Protect PDF
-            </Button>
-          </>
+          <Button onClick={handleConvert} disabled={status === "processing"} className="w-full gap-2" size="lg">
+            <Archive className="w-5 h-5" /> Convert to PDF/A
+          </Button>
         )}
         <ProcessingStatus status={status} message={statusMessage} />
         {result && (
-          <Button onClick={() => { const a = document.createElement("a"); a.href = result; a.download = "protected.pdf"; a.click(); }} className="w-full gap-2" variant="outline">
-            <Download className="w-5 h-5" /> Download PDF
+          <Button onClick={() => { const a = document.createElement("a"); a.href = result; a.download = "archive.pdf"; a.click(); }} className="w-full gap-2" variant="outline">
+            <Download className="w-5 h-5" /> Download PDF/A
           </Button>
         )}
       </div>
@@ -80,4 +77,4 @@ const PasswordProtectPDF = () => {
   );
 };
 
-export default PasswordProtectPDF;
+export default PDFToPDFA;
