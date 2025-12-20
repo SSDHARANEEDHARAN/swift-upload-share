@@ -5,12 +5,34 @@ import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CircularProgress } from "@/components/ui/circular-progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Copy, FileText, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Tesseract from "tesseract.js";
 
 const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1586339949216-35c2747cc36d?w=800&q=80";
+
+const OCR_LANGUAGES = [
+  { code: "eng", name: "English" },
+  { code: "spa", name: "Spanish" },
+  { code: "fra", name: "French" },
+  { code: "deu", name: "German" },
+  { code: "ita", name: "Italian" },
+  { code: "por", name: "Portuguese" },
+  { code: "rus", name: "Russian" },
+  { code: "jpn", name: "Japanese" },
+  { code: "kor", name: "Korean" },
+  { code: "chi_sim", name: "Chinese (Simplified)" },
+  { code: "chi_tra", name: "Chinese (Traditional)" },
+  { code: "ara", name: "Arabic" },
+  { code: "hin", name: "Hindi" },
+  { code: "tha", name: "Thai" },
+  { code: "vie", name: "Vietnamese" },
+  { code: "nld", name: "Dutch" },
+  { code: "pol", name: "Polish" },
+  { code: "tur", name: "Turkish" },
+];
 
 const ImageToText = () => {
   const [user, setUser] = useState<any>(null);
@@ -20,6 +42,7 @@ const ImageToText = () => {
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [progress, setProgress] = useState(0);
+  const [selectedLanguage, setSelectedLanguage] = useState("eng");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -78,7 +101,7 @@ const ImageToText = () => {
     setProgress(0);
 
     try {
-      const result = await Tesseract.recognize(selectedFile, "eng", {
+      const result = await Tesseract.recognize(selectedFile, selectedLanguage, {
         logger: (m) => {
           if (m.status === "recognizing text") {
             const progressValue = Math.round(m.progress * 100);
@@ -141,6 +164,24 @@ const ImageToText = () => {
           preview={preview}
           onClear={handleClear}
         />
+
+        {selectedFile && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Text Language</label>
+            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                {OCR_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {selectedFile && !extractedText && status !== "processing" && (
           <Button

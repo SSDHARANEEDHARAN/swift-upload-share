@@ -4,9 +4,11 @@ import { ImageDropzone } from "@/components/ImageDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, Box } from "lucide-react";
+import { Download, Box, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&q=80";
 
 const ImageTo3D = () => {
   const [user, setUser] = useState<any>(null);
@@ -37,6 +39,27 @@ const ImageTo3D = () => {
     setImagePreview(null);
     setResult(null);
     setStatus("idle");
+  };
+
+  const handleUseSampleImage = async () => {
+    setStatus("processing");
+    setStatusMessage("Loading sample image...");
+    
+    try {
+      const response = await fetch(SAMPLE_IMAGE_URL);
+      const blob = await response.blob();
+      const file = new File([blob], "sample-image.jpg", { type: "image/jpeg" });
+      
+      setSelectedImage(file);
+      setImagePreview(SAMPLE_IMAGE_URL);
+      setStatus("idle");
+      setStatusMessage("");
+      toast.success("Sample image loaded!");
+    } catch (error) {
+      setStatus("error");
+      setStatusMessage("Failed to load sample image");
+      toast.error("Failed to load sample image");
+    }
   };
 
   const handleGenerate3D = async () => {
@@ -77,6 +100,18 @@ const ImageTo3D = () => {
       user={user}
     >
       <div className="space-y-6">
+        {!selectedImage && (
+          <Button
+            variant="outline"
+            onClick={handleUseSampleImage}
+            className="w-full gap-2"
+            disabled={status === "processing"}
+          >
+            <ImageIcon className="w-5 h-5" />
+            Use Sample Image
+          </Button>
+        )}
+
         <ImageDropzone
           onImageSelect={handleImageSelect}
           preview={imagePreview}
