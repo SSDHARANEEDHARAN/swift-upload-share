@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Download as DownloadIcon, FileIcon, Loader2, AlertCircle } from "lucide-react";
+import { Download as DownloadIcon, FileIcon, Loader2, AlertCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CircularProgress } from "@/components/ui/circular-progress";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,17 +13,51 @@ const Download = () => {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [fileData, setFileData] = useState<any>(null);
   const [error, setError] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
     loadFileData();
   }, [token]);
 
+  // Countdown timer effect
   useEffect(() => {
-    if (fileData && !downloading) {
-      downloadFile();
-    }
+    if (!fileData || fileData.length === 0) return;
+    
+    const expiresAt = new Date(fileData[0].expires_at);
+    
+    const updateCountdown = () => {
+      const now = new Date();
+      const diff = expiresAt.getTime() - now.getTime();
+      
+      if (diff <= 0) {
+        setIsExpired(true);
+        setTimeRemaining("Expired");
+        return;
+      }
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      if (days > 0) {
+        setTimeRemaining(`${days}d ${hours}h ${minutes}m`);
+      } else if (hours > 0) {
+        setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+      } else {
+        setTimeRemaining(`${minutes}m ${seconds}s`);
+      }
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    
+    return () => clearInterval(interval);
   }, [fileData]);
 
   const loadFileData = async () => {
@@ -38,6 +73,7 @@ const Download = () => {
       });
 
       if (error) {
+        console.error("RPC error:", error);
         setError(true);
         toast.error("File not found or has expired");
         return;
@@ -51,6 +87,7 @@ const Download = () => {
 
       setFileData(data);
     } catch (err) {
+      console.error("Load error:", err);
       setError(true);
       toast.error("Failed to load files");
     } finally {
@@ -59,23 +96,58 @@ const Download = () => {
   };
 
   const downloadFile = async () => {
-    if (!fileData || fileData.length === 0) return;
+    if (!fileData || fileData.length === 0 || isExpired) return;
 
     setDownloading(true);
+    setDownloadProgress(0);
+    setCurrentFileIndex(0);
+    
+    const totalSize = fileData.reduce((sum: number, f: any) => sum + f.file_size, 0);
+    let downloadedSize = 0;
+    
     try {
-      for (const file of fileData) {
+      for (let i = 0; i < fileData.length; i++) {
+        const file = fileData[i];
+        setCurrentFileIndex(i + 1);
+        
         const { data: signedUrlData, error: signedUrlError } = await supabase.storage
           .from('transfers')
           .createSignedUrl(file.storage_path, 3600);
 
         if (signedUrlError || !signedUrlData?.signedUrl) {
+          console.error("Signed URL error:", signedUrlError);
           throw new Error('Failed to generate download URL');
         }
 
-        const response = await fetch(signedUrlData.signedUrl);
-        if (!response.ok) throw new Error('Download failed');
+        // Download with progress tracking using XHR
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', signedUrlData.signedUrl);
+          xhr.responseType = 'blob';
+          
+          xhr.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const fileProgress = event.loaded;
+              const currentTotal = downloadedSize + fileProgress;
+              const overallProgress = (currentTotal / totalSize) * 100;
+              setDownloadProgress(Math.min(overallProgress, 99));
+            }
+          });
+          
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(xhr.response);
+            } else {
+              reject(new Error('Download failed'));
+            }
+          });
+          
+          xhr.addEventListener('error', () => reject(new Error('Download failed')));
+          xhr.send();
+        });
         
-        const blob = await response.blob();
+        downloadedSize += file.file_size;
+        
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -98,8 +170,10 @@ const Download = () => {
         await supabase.rpc('increment_download_count', { file_id: file.id });
       }
 
+      setDownloadProgress(100);
       toast.success(`${fileData.length} file${fileData.length > 1 ? 's' : ''} downloaded!`);
     } catch (err) {
+      console.error("Download error:", err);
       toast.error("Download failed. Please try again.");
     } finally {
       setDownloading(false);
@@ -109,7 +183,8 @@ const Download = () => {
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
   };
 
   if (loading) {
@@ -184,15 +259,38 @@ const Download = () => {
               </div>
             </div>
 
+            {/* Expiration countdown timer */}
+            <div className={`flex items-center justify-center gap-2 p-3 rounded-lg ${isExpired ? 'bg-destructive/10 text-destructive' : 'bg-accent/10 text-accent-foreground'}`}>
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                {isExpired ? 'This link has expired' : `Expires in: ${timeRemaining}`}
+              </span>
+            </div>
+
+            {/* Download progress */}
+            {downloading && (
+              <div className="flex flex-col items-center space-y-3">
+                <CircularProgress value={downloadProgress} size={100} strokeWidth={8} />
+                <p className="text-sm text-muted-foreground">
+                  Downloading {currentFileIndex}/{fileData.length}
+                </p>
+              </div>
+            )}
+
             <Button
               onClick={downloadFile}
-              disabled={downloading}
+              disabled={downloading || isExpired}
               className="w-full h-12 text-base"
             >
               {downloading ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Downloading...
+                  Downloading {Math.round(downloadProgress)}%
+                </>
+              ) : isExpired ? (
+                <>
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  Link Expired
                 </>
               ) : (
                 <>

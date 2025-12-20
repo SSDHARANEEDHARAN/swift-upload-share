@@ -120,14 +120,16 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
       };
 
       // Helper function to upload file with real XHR progress
-      const uploadWithProgress = (file: File, filePath: string, fileStartSize: number): Promise<void> => {
+      const uploadWithProgress = async (file: File, filePath: string, fileStartSize: number): Promise<void> => {
+        // Get current session for auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        
+        // Use session token if available, otherwise use anon key
+        const authToken = session?.access_token || supabaseKey;
+        
         return new Promise((resolve, reject) => {
-          const { data: { session } } = supabase.auth.getSession() as any;
-          
-          // Get Supabase URL and key from the client
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-          
           const xhr = new XMLHttpRequest();
           const uploadUrl = `${supabaseUrl}/storage/v1/object/transfers/${filePath}`;
           
@@ -159,7 +161,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
           xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
           
           xhr.open('POST', uploadUrl);
-          xhr.setRequestHeader('Authorization', `Bearer ${supabaseKey}`);
+          xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
           xhr.setRequestHeader('x-upsert', 'false');
           xhr.send(file);
         });
