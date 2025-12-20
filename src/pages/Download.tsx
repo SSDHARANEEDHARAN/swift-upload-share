@@ -46,11 +46,13 @@ const Download = () => {
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
       
       if (days > 0) {
-        setTimeRemaining(`${days}d ${hours}h ${minutes}m`);
+        setTimeRemaining(`${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours !== 1 ? 's' : ''}`);
       } else if (hours > 0) {
-        setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+        setTimeRemaining(`${hours} hour${hours !== 1 ? 's' : ''}, ${minutes} min`);
+      } else if (minutes > 0) {
+        setTimeRemaining(`${minutes} min, ${seconds} sec`);
       } else {
-        setTimeRemaining(`${minutes}m ${seconds}s`);
+        setTimeRemaining(`${seconds} seconds`);
       }
     };
     
@@ -259,13 +261,30 @@ const Download = () => {
               </div>
             </div>
 
-            {/* Expiration countdown timer */}
-            <div className={`flex items-center justify-center gap-2 p-3 rounded-lg ${isExpired ? 'bg-destructive/10 text-destructive' : 'bg-accent/10 text-accent-foreground'}`}>
-              <Clock className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {isExpired ? 'This link has expired' : `Expires in: ${timeRemaining}`}
-              </span>
-            </div>
+            {/* Expiration countdown timer with color indicators */}
+            {(() => {
+              const expiresAt = new Date(fileData[0].expires_at);
+              const diff = expiresAt.getTime() - Date.now();
+              const isUrgent = diff < 60 * 60 * 1000; // Less than 1 hour
+              const isWarning = diff < 24 * 60 * 60 * 1000; // Less than 1 day
+              
+              const colorClass = isExpired 
+                ? 'bg-destructive/10 text-destructive border-destructive/30' 
+                : isUrgent 
+                  ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' 
+                  : isWarning 
+                    ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30' 
+                    : 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30';
+              
+              return (
+                <div className={`flex items-center justify-center gap-2 p-3 rounded-lg border ${colorClass}`}>
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {isExpired ? 'This link has expired' : `Expires in: ${timeRemaining}`}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Download progress */}
             {downloading && (

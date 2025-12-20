@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Upload, Link2, Check, Loader2, CheckCircle } from "lucide-react";
+import { Upload, Link2, Check, Loader2, CheckCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CircularProgress } from "@/components/ui/circular-progress";
@@ -7,7 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
+const EXPIRATION_OPTIONS = [
+  { value: '1h', label: '1 Hour', duration: 60 * 60 * 1000 },
+  { value: '1d', label: '1 Day', duration: 24 * 60 * 60 * 1000 },
+  { value: '1w', label: '1 Week', duration: 7 * 24 * 60 * 60 * 1000 },
+  { value: '1m', label: '1 Month', duration: 30 * 24 * 60 * 60 * 1000 },
+];
 interface FileUploadProps {
   user?: any;
   onUploadComplete?: () => void;
@@ -25,7 +38,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   const [currentBatchId, setCurrentBatchId] = useState("");
   const [currentShareToken, setCurrentShareToken] = useState("");
   const [isFinalized, setIsFinalized] = useState(false);
-
+  const [expirationOption, setExpirationOption] = useState('1w');
   const MAX_SIZE_ANONYMOUS = 500 * 1024 * 1024; // 500MB
   const MAX_SIZE_AUTHENTICATED = 2 * 1024 * 1024 * 1024; // 2GB
   const maxSize = user ? MAX_SIZE_AUTHENTICATED : MAX_SIZE_ANONYMOUS;
@@ -182,6 +195,10 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
         // Update after file complete
         uploadedSize += file.size;
 
+        // Calculate expiration time based on selected option
+        const selectedExpiration = EXPIRATION_OPTIONS.find(opt => opt.value === expirationOption);
+        const expiresAt = new Date(Date.now() + (selectedExpiration?.duration || 7 * 24 * 60 * 60 * 1000));
+
         // Insert file metadata
         const insertData: any = {
           filename: file.name,
@@ -190,6 +207,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
           storage_path: filePath,
           batch_id: batchId,
           user_id: user?.id || null,
+          expires_at: expiresAt.toISOString(),
         };
 
         if (shareToken) {
@@ -355,6 +373,26 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
                 </div>
               )}
             </label>
+          </div>
+
+          {/* Expiration selector */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              <span>Expires in:</span>
+            </div>
+            <Select value={expirationOption} onValueChange={setExpirationOption} disabled={uploading}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPIRATION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {uploading && (
