@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, FileText, Image } from "lucide-react";
+import { Copy, FileText, Image, Download, File as FileIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Tesseract from "tesseract.js";
+import { jsPDF } from "jspdf";
 
 const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1586339949216-35c2747cc36d?w=800&q=80";
 
@@ -140,6 +141,53 @@ const ImageToText = () => {
     toast.success("Text copied to clipboard!");
   };
 
+  const exportAsTxt = () => {
+    const blob = new Blob([extractedText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "extracted-text.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Downloaded as TXT!");
+  };
+
+  const exportAsPdf = () => {
+    const doc = new jsPDF();
+    const lines = doc.splitTextToSize(extractedText, 180);
+    let y = 20;
+    
+    lines.forEach((line: string) => {
+      if (y > 280) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.text(line, 15, y);
+      y += 7;
+    });
+
+    doc.save("extracted-text.pdf");
+    toast.success("Downloaded as PDF!");
+  };
+
+  const exportAsDocx = async () => {
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'></head><body>";
+    const footer = "</body></html>";
+    const content = extractedText.split("\n").map(p => `<p>${p}</p>`).join("");
+    
+    const blob = new Blob([header + content + footer], {
+      type: "application/msword",
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "extracted-text.doc";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Downloaded as DOC!");
+  };
+
   return (
     <ToolPageLayout
       title="Image to Text (OCR)"
@@ -219,6 +267,23 @@ const ImageToText = () => {
               readOnly
               className="min-h-[200px] bg-secondary/50 font-mono text-sm"
             />
+            
+            {/* Export buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground">Export as:</span>
+              <Button variant="outline" size="sm" onClick={exportAsTxt} className="gap-2">
+                <FileIcon className="w-4 h-4" />
+                TXT
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportAsPdf} className="gap-2">
+                <Download className="w-4 h-4" />
+                PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportAsDocx} className="gap-2">
+                <Download className="w-4 h-4" />
+                DOC
+              </Button>
+            </div>
           </div>
         )}
       </div>

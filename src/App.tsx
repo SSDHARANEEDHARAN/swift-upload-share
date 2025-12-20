@@ -24,7 +24,8 @@ import VectorizeImage from "./pages/tools/VectorizeImage";
 import ImageTo3D from "./pages/tools/ImageTo3D";
 import ImageToVideo from "./pages/tools/ImageToVideo";
 import ImageToText from "./pages/tools/ImageToText";
-
+import BatchOCR from "./pages/tools/BatchOCR";
+import SharedNotes from "./pages/tools/SharedNotes";
 // PDF Tools
 import CompressPDF from "./pages/tools/CompressPDF";
 import ImagesToPDF from "./pages/tools/ImagesToPDF";
@@ -81,6 +82,9 @@ const AnimatedRoutes = () => {
         <Route path="/tools/image-to-3d" element={<AnimatedPage><ImageTo3D /></AnimatedPage>} />
         <Route path="/tools/image-to-video" element={<AnimatedPage><ImageToVideo /></AnimatedPage>} />
         <Route path="/tools/image-to-text" element={<AnimatedPage><ImageToText /></AnimatedPage>} />
+        <Route path="/tools/batch-ocr" element={<AnimatedPage><BatchOCR /></AnimatedPage>} />
+        <Route path="/tools/shared-notes" element={<AnimatedPage><SharedNotes /></AnimatedPage>} />
+        <Route path="/tools/shared-notes/:token" element={<AnimatedPage><SharedNotes /></AnimatedPage>} />
         
         {/* PDF Tools */}
         <Route path="/tools/compress-pdf" element={<AnimatedPage><CompressPDF /></AnimatedPage>} />
