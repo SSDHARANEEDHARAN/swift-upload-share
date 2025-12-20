@@ -3,9 +3,11 @@ import { ToolPageLayout } from "@/components/ToolPageLayout";
 import { ImageDropzone } from "@/components/ImageDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
-import { Download, Video } from "lucide-react";
+import { Download, Video, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80";
 
 const ImageToVideo = () => {
   const [user, setUser] = useState<any>(null);
@@ -36,6 +38,27 @@ const ImageToVideo = () => {
     setImagePreview(null);
     setResult(null);
     setStatus("idle");
+  };
+
+  const handleUseSampleImage = async () => {
+    setStatus("processing");
+    setStatusMessage("Loading sample image...");
+    
+    try {
+      const response = await fetch(SAMPLE_IMAGE_URL);
+      const blob = await response.blob();
+      const file = new File([blob], "sample-image.jpg", { type: "image/jpeg" });
+      
+      setSelectedImage(file);
+      setImagePreview(SAMPLE_IMAGE_URL);
+      setStatus("idle");
+      setStatusMessage("");
+      toast.success("Sample image loaded!");
+    } catch (error) {
+      setStatus("error");
+      setStatusMessage("Failed to load sample image");
+      toast.error("Failed to load sample image");
+    }
   };
 
   const handleGenerateVideo = async () => {
@@ -76,6 +99,18 @@ const ImageToVideo = () => {
       user={user}
     >
       <div className="space-y-6">
+        {!selectedImage && (
+          <Button
+            variant="outline"
+            onClick={handleUseSampleImage}
+            className="w-full gap-2"
+            disabled={status === "processing"}
+          >
+            <ImageIcon className="w-5 h-5" />
+            Use Sample Image
+          </Button>
+        )}
+
         <ImageDropzone
           onImageSelect={handleImageSelect}
           preview={imagePreview}
