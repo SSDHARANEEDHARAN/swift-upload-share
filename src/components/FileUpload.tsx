@@ -119,6 +119,52 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
         return sanitized || 'unnamed_file';
       };
 
+      // Helper function to upload file with real XHR progress
+      const uploadWithProgress = (file: File, filePath: string, fileStartSize: number): Promise<void> => {
+        return new Promise((resolve, reject) => {
+          const { data: { session } } = supabase.auth.getSession() as any;
+          
+          // Get Supabase URL and key from the client
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          
+          const xhr = new XMLHttpRequest();
+          const uploadUrl = `${supabaseUrl}/storage/v1/object/transfers/${filePath}`;
+          
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const fileProgress = event.loaded;
+              const currentTotalUploaded = fileStartSize + fileProgress;
+              const overallProgress = (currentTotalUploaded / totalSize) * 100;
+              setProgress(Math.min(overallProgress, 99)); // Cap at 99% until confirmed
+              
+              // Calculate real upload speed
+              const elapsed = (Date.now() - startTime) / 1000;
+              if (elapsed > 0) {
+                const speed = (currentTotalUploaded / (1024 * 1024)) / elapsed;
+                setUploadSpeed(speed);
+              }
+            }
+          });
+          
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`));
+            }
+          });
+          
+          xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+          xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+          
+          xhr.open('POST', uploadUrl);
+          xhr.setRequestHeader('Authorization', `Bearer ${supabaseKey}`);
+          xhr.setRequestHeader('x-upsert', 'false');
+          xhr.send(file);
+        });
+      };
+
       // Upload all files with real progress tracking
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -128,29 +174,11 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
         const fileName = user ? `${user.id}/${Date.now()}_${i}_${sanitizedName}` : `anonymous/${Date.now()}_${i}_${sanitizedName}`;
         const filePath = `${fileName}`;
 
-        // Upload to storage
-        const { data, error: uploadError } = await supabase.storage
-          .from('transfers')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        // Update progress after each file
+        // Upload to storage with real progress
+        await uploadWithProgress(file, filePath, uploadedSize);
+        
+        // Update after file complete
         uploadedSize += file.size;
-        const overallProgress = (uploadedSize / totalSize) * 100;
-        setProgress(overallProgress);
-
-        // Calculate real upload speed
-        const elapsed = (Date.now() - startTime) / 1000;
-        if (elapsed > 0) {
-          const speed = (uploadedSize / (1024 * 1024)) / elapsed;
-          setUploadSpeed(speed);
-        }
 
         // Insert file metadata
         const insertData: any = {
