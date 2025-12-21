@@ -39,9 +39,16 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   const [currentShareToken, setCurrentShareToken] = useState("");
   const [isFinalized, setIsFinalized] = useState(false);
   const [expirationOption, setExpirationOption] = useState('1w');
+
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [sentBytes, setSentBytes] = useState(0);
+  const [confirmedBytes, setConfirmedBytes] = useState(0);
+
   const MAX_SIZE_ANONYMOUS = 500 * 1024 * 1024; // 500MB
   const MAX_SIZE_AUTHENTICATED = 2 * 1024 * 1024 * 1024; // 2GB
   const maxSize = user ? MAX_SIZE_AUTHENTICATED : MAX_SIZE_ANONYMOUS;
+
+  const formatMB = (bytes: number) => (bytes / 1024 / 1024).toFixed(2);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -86,6 +93,9 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     setProgress(0);
     setUploadSpeed(0);
     setCurrentFileIndex(0);
+    setTotalBytes(totalSize);
+    setSentBytes(0);
+    setConfirmedBytes(0);
 
     try {
       const generateShareToken = () => {
@@ -106,8 +116,8 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
       }
 
       let uploadedSize = 0;
+      let confirmedSize = 0;
       const startTime = Date.now();
-
       // Sanitize filename to prevent path traversal and other issues
       const sanitizeFilename = (name: string) => {
         // Reserved Windows filenames
@@ -152,7 +162,8 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
               const currentTotalUploaded = fileStartSize + fileProgress;
               const overallProgress = (currentTotalUploaded / totalSize) * 100;
               setProgress(Math.min(overallProgress, 99)); // Cap at 99% until confirmed
-              
+              setSentBytes(currentTotalUploaded);
+
               // Calculate real upload speed
               const elapsed = (Date.now() - startTime) / 1000;
               if (elapsed > 0) {
@@ -175,6 +186,8 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
           
           xhr.open('POST', uploadUrl);
           xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+          xhr.setRequestHeader('apikey', supabaseKey);
+          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
           xhr.setRequestHeader('x-upsert', 'false');
           xhr.send(file);
         });
@@ -189,11 +202,36 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
         const fileName = user ? `${user.id}/${Date.now()}_${i}_${sanitizedName}` : `anonymous/${Date.now()}_${i}_${sanitizedName}`;
         const filePath = `${fileName}`;
 
-        // Upload to storage with real progress
-        await uploadWithProgress(file, filePath, uploadedSize);
-        
-        // Update after file complete
-        uploadedSize += file.size;
+         // Upload to storage with real progress
+         await uploadWithProgress(file, filePath, uploadedSize);
+
+         // Verify object exists and size matches before writing DB metadata.
+         const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+           "verify-upload",
+           {
+             body: { path: filePath, expectedBytes: file.size },
+           }
+         );
+
+         if (verifyError) throw verifyError;
+
+         const actualBytes =
+           typeof (verifyData as any)?.actualBytes === "number"
+             ? (verifyData as any).actualBytes
+             : null;
+
+         if (!(verifyData as any)?.ok || actualBytes === null) {
+           throw new Error(
+             "Upload verification failed. The file was not stored correctly.",
+           );
+         }
+
+         confirmedSize += actualBytes;
+         setConfirmedBytes(confirmedSize);
+
+         // Update after file complete
+         uploadedSize += file.size;
+         setSentBytes(uploadedSize);
 
         // Calculate expiration time based on selected option
         const selectedExpiration = EXPIRATION_OPTIONS.find(opt => opt.value === expirationOption);
@@ -233,7 +271,13 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
         }
       }
 
+      if (confirmedSize !== totalSize) {
+        throw new Error("Upload verification failed. Uploaded size mismatch.");
+      }
+
       setProgress(100);
+      setSentBytes(totalSize);
+      setConfirmedBytes(confirmedSize);
       
       // Store batch info for adding more files
       setCurrentBatchId(batchId);
@@ -266,6 +310,9 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
       console.error("Upload failed", err);
       toast.error("Upload failed. Please try again.");
       setProgress(0);
+      setSentBytes(0);
+      setConfirmedBytes(0);
+      setTotalBytes(0);
     } finally {
       setUploading(false);
     }
@@ -300,6 +347,9 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     setFiles([]);
     setProgress(0);
     setCurrentFileIndex(0);
+    setSentBytes(0);
+    setConfirmedBytes(0);
+    setTotalBytes(0);
   };
 
   const reset = () => {
@@ -310,6 +360,9 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     setCurrentBatchId("");
     setCurrentShareToken("");
     setIsFinalized(false);
+    setSentBytes(0);
+    setConfirmedBytes(0);
+    setTotalBytes(0);
   };
 
   return (
@@ -402,6 +455,16 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
                 <p className="text-sm font-medium text-foreground">
                   Uploading {currentFileIndex}/{files.length}
                 </p>
+                {totalBytes > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Sent: {formatMB(sentBytes)} / {formatMB(totalBytes)} MB
+                  </p>
+                )}
+                {totalBytes > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Stored: {formatMB(confirmedBytes)} MB (verified)
+                  </p>
+                )}
                 {uploadSpeed > 0 && (
                   <p className="text-xs text-muted-foreground">
                     {uploadSpeed.toFixed(2)} MB/s

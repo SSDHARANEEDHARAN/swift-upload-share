@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.image-to-3d]
 verify_jwt = false
+
+[functions.download-manifest]
+verify_jwt = false
+
+[functions.verify-upload]
+verify_jwt = false
