@@ -70,24 +70,26 @@ const Download = () => {
     }
 
     try {
-      const { data, error } = await supabase.rpc('get_files_by_share_token', { 
-        p_share_token: token 
+      const { data, error } = await supabase.functions.invoke("download-manifest", {
+        body: { shareToken: token },
       });
 
       if (error) {
-        console.error("RPC error:", error);
+        console.error("Manifest error:", error);
         setError(true);
         toast.error("File not found or has expired");
         return;
       }
 
-      if (!data || data.length === 0) {
+      const files = (data as any)?.files as any[] | undefined;
+
+      if (!files || files.length === 0) {
         setError(true);
         toast.error("No files found with this link");
         return;
       }
 
-      setFileData(data);
+      setFileData(files);
     } catch (err) {
       console.error("Load error:", err);
       setError(true);
@@ -98,36 +100,46 @@ const Download = () => {
   };
 
   const downloadFile = async () => {
-    if (!fileData || fileData.length === 0 || isExpired) return;
+    if (!token || isExpired) return;
 
     setDownloading(true);
     setDownloadProgress(0);
     setCurrentFileIndex(0);
-    
-    const totalSize = fileData.reduce((sum: number, f: any) => sum + f.file_size, 0);
-    let downloadedSize = 0;
-    
-    try {
-      for (let i = 0; i < fileData.length; i++) {
-        const file = fileData[i];
-        setCurrentFileIndex(i + 1);
-        
-        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-          .from('transfers')
-          .createSignedUrl(file.storage_path, 3600);
 
-        if (signedUrlError || !signedUrlData?.signedUrl) {
-          console.error("Signed URL error:", signedUrlError);
-          throw new Error('Failed to generate download URL');
+    try {
+      // Always fetch fresh signed URLs right before downloading.
+      const { data, error } = await supabase.functions.invoke("download-manifest", {
+        body: { shareToken: token },
+      });
+
+      if (error) {
+        console.error("Manifest error:", error);
+        throw new Error("File not found or has expired");
+      }
+
+      const files = ((data as any)?.files as any[] | undefined) ?? [];
+      if (files.length === 0) throw new Error("File not found or has expired");
+
+      setFileData(files);
+
+      const totalSize = files.reduce((sum: number, f: any) => sum + f.file_size, 0);
+      let downloadedSize = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setCurrentFileIndex(i + 1);
+
+        if (!file.downloadUrl) {
+          throw new Error("Missing download URL");
         }
 
         // Download with progress tracking using XHR
         const blob = await new Promise<Blob>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open('GET', signedUrlData.signedUrl);
-          xhr.responseType = 'blob';
-          
-          xhr.addEventListener('progress', (event) => {
+          xhr.open("GET", file.downloadUrl);
+          xhr.responseType = "blob";
+
+          xhr.addEventListener("progress", (event) => {
             if (event.lengthComputable) {
               const fileProgress = event.loaded;
               const currentTotal = downloadedSize + fileProgress;
@@ -135,45 +147,50 @@ const Download = () => {
               setDownloadProgress(Math.min(overallProgress, 99));
             }
           });
-          
-          xhr.addEventListener('load', () => {
+
+          xhr.addEventListener("load", () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve(xhr.response);
             } else {
-              reject(new Error('Download failed'));
+              reject(new Error("Download failed"));
             }
           });
-          
-          xhr.addEventListener('error', () => reject(new Error('Download failed')));
+
+          xhr.addEventListener("error", () => reject(new Error("Download failed")));
           xhr.send();
         });
-        
+
         downloadedSize += file.file_size;
-        
+
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         const sanitizedFilename = file.filename
-          .normalize('NFKD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-zA-Z0-9._-]/g, '_')
-          .replace(/^\.+/, '')
-          .slice(0, 150) || 'download';
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9._-]/g, "_")
+          .replace(/^\.+/, "")
+          .slice(0, 150) || "download";
         a.download = sanitizedFilename;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
-        if (fileData.length > 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+        if (files.length > 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
-        await supabase.rpc('increment_download_count', { file_id: file.id });
+        // Best-effort analytics only (never block downloads).
+        try {
+          await supabase.rpc("increment_download_count", { file_id: file.id });
+        } catch (e) {
+          console.warn("Failed to increment download count", e);
+        }
       }
 
       setDownloadProgress(100);
-      toast.success(`${fileData.length} file${fileData.length > 1 ? 's' : ''} downloaded!`);
+      toast.success(`${files.length} file${files.length > 1 ? "s" : ""} downloaded!`);
     } catch (err) {
       console.error("Download error:", err);
       toast.error("Download failed. Please try again.");
