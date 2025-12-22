@@ -14,6 +14,8 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import HelpCenter from "./pages/HelpCenter";
 import Dashboard from "./pages/Dashboard";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 // Image Tools
 import EditImage from "./pages/tools/EditImage";
@@ -102,6 +104,8 @@ const AnimatedRoutes = () => {
         {/* User Pages */}
         <Route path="/dashboard" element={<AnimatedPage><Dashboard /></AnimatedPage>} />
         <Route path="/help" element={<AnimatedPage><HelpCenter /></AnimatedPage>} />
+        <Route path="/terms" element={<AnimatedPage><Terms /></AnimatedPage>} />
+        <Route path="/privacy" element={<AnimatedPage><Privacy /></AnimatedPage>} />
         
         <Route path="*" element={<AnimatedPage><NotFound /></AnimatedPage>} />
       </Routes>
