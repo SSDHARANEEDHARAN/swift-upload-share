@@ -75,10 +75,10 @@ export const Footer = () => {
             © {new Date().getFullYear()} Rise to Live. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link to="/" className="hover:text-foreground transition-colors">
+            <Link to="/terms" className="hover:text-foreground transition-colors">
               Terms & Conditions
             </Link>
-            <Link to="/" className="hover:text-foreground transition-colors">
+            <Link to="/privacy" className="hover:text-foreground transition-colors">
               Privacy Policy
             </Link>
           </div>
