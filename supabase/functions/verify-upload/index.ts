@@ -41,13 +41,16 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: obj, error: objErr } = await supabaseAdmin
-      .schema("storage")
-      .from("objects")
-      .select("metadata")
-      .eq("bucket_id", "transfers")
-      .eq("name", path)
-      .maybeSingle();
+    const bucket = "transfers";
+    const lastSlash = path.lastIndexOf("/");
+    const folder = lastSlash >= 0 ? path.slice(0, lastSlash) : "";
+    const filename = lastSlash >= 0 ? path.slice(lastSlash + 1) : path;
+
+    const { data: objects, error: objErr } = await supabaseAdmin.storage
+      .from(bucket)
+      .list(folder, { limit: 1000, search: filename });
+
+    const obj = objects?.find((o) => o.name === filename) ?? null;
 
     if (objErr) {
       console.error("verify-upload objErr", objErr);
