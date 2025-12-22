@@ -1,6 +1,7 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
+import { ApiPlayground } from "@/components/ApiPlayground";
 
 const ApiDocs = () => {
   return (
@@ -149,6 +150,9 @@ password: string (optional)`}</pre>
               </div>
             </div>
           </section>
+
+          {/* API Playground */}
+          <ApiPlayground />
         </div>
       </main>
       <Footer />
