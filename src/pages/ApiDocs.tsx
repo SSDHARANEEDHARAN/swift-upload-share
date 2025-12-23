@@ -2,6 +2,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { ApiPlayground } from "@/components/ApiPlayground";
+import { CodeExamples } from "@/components/CodeExamples";
+import { ApiKeyManager } from "@/components/ApiKeyManager";
 
 const ApiDocs = () => {
   return (
@@ -14,6 +16,9 @@ const ApiDocs = () => {
         </p>
 
         <div className="space-y-8">
+          {/* API Key Manager */}
+          <ApiKeyManager />
+
           {/* Authentication */}
           <section className="border border-border rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4">Authentication</h2>
@@ -57,6 +62,13 @@ password: string (optional)`}</pre>
   "expires_at": "2024-01-15T12:00:00Z"
 }`}</pre>
             </div>
+
+            <CodeExamples 
+              endpoint="/upload" 
+              method="POST" 
+              hasBody={true}
+              bodyExample='{"expires_in": 24}'
+            />
           </section>
 
           {/* Get File Info */}
@@ -78,6 +90,11 @@ password: string (optional)`}</pre>
   "download_count": 5
 }`}</pre>
             </div>
+
+            <CodeExamples 
+              endpoint="/files/abc123" 
+              method="GET" 
+            />
           </section>
 
           {/* Download Endpoint */}
@@ -94,7 +111,13 @@ password: string (optional)`}</pre>
             </div>
 
             <h3 className="font-medium mb-2">Response</h3>
-            <p className="text-muted-foreground">Returns the file as a binary stream with appropriate Content-Type headers.</p>
+            <p className="text-muted-foreground mb-4">Returns the file as a binary stream with appropriate Content-Type headers.</p>
+
+            <CodeExamples 
+              endpoint="/download/abc123" 
+              method="GET"
+              queryParams="?password=secret123"
+            />
           </section>
 
           {/* Delete Endpoint */}
@@ -112,6 +135,11 @@ password: string (optional)`}</pre>
   "message": "File deleted successfully"
 }`}</pre>
             </div>
+
+            <CodeExamples 
+              endpoint="/files/abc123" 
+              method="DELETE" 
+            />
           </section>
 
           {/* Rate Limits */}
