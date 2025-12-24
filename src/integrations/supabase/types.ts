@@ -24,6 +24,9 @@ export type Database = {
           key_prefix: string
           last_used_at: string | null
           name: string
+          rate_limit: number | null
+          rate_limit_reset_at: string | null
+          request_count: number | null
           user_id: string
         }
         Insert: {
@@ -35,6 +38,9 @@ export type Database = {
           key_prefix: string
           last_used_at?: string | null
           name: string
+          rate_limit?: number | null
+          rate_limit_reset_at?: string | null
+          request_count?: number | null
           user_id: string
         }
         Update: {
@@ -46,6 +52,9 @@ export type Database = {
           key_prefix?: string
           last_used_at?: string | null
           name?: string
+          rate_limit?: number | null
+          rate_limit_reset_at?: string | null
+          request_count?: number | null
           user_id?: string
         }
         Relationships: []
