@@ -4,6 +4,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Accordion,
   AccordionContent,
@@ -29,9 +31,12 @@ import {
   Image,
   Upload,
   HelpCircle,
-  Mail
+  Mail,
+  Send,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const toolDocs = [
   {
@@ -87,10 +92,20 @@ const faqs = [
 const HelpCenter = () => {
   const [user, setUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: ""
+  });
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user?.email) {
+        setContactForm(prev => ({ ...prev, email: session.user.email }));
+      }
     });
   }, []);
 
@@ -106,6 +121,37 @@ const HelpCenter = () => {
     faq.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
     faq.a.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!contactForm.name || !contactForm.email || !contactForm.subject || !contactForm.message) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-contact-email', {
+        body: contactForm
+      });
+
+      if (error) throw error;
+
+      toast.success("Message sent! We'll get back to you soon.");
+      setContactForm(prev => ({
+        name: "",
+        email: prev.email,
+        subject: "",
+        message: ""
+      }));
+    } catch (error: any) {
+      console.error('Error sending contact email:', error);
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -201,16 +247,76 @@ const HelpCenter = () => {
 
         {/* Contact */}
         <section className="px-4 sm:px-6 py-16">
-          <div className="max-w-xl mx-auto text-center">
-            <Mail className="w-10 h-10 text-primary mx-auto mb-4" />
-            <h2 className="text-2xl font-display font-bold mb-2">Still need help?</h2>
-            <p className="text-muted-foreground mb-6">
-              Can't find what you're looking for? Our support team is here to help.
-            </p>
-            <Button size="lg">
-              <Mail className="w-4 h-4 mr-2" />
-              Contact Support
-            </Button>
+          <div className="max-w-xl mx-auto">
+            <div className="text-center mb-8">
+              <Mail className="w-10 h-10 text-primary mx-auto mb-4" />
+              <h2 className="text-2xl font-display font-bold mb-2">Still need help?</h2>
+              <p className="text-muted-foreground">
+                Can't find what you're looking for? Send us a message and we'll get back to you.
+              </p>
+            </div>
+            
+            <form onSubmit={handleContactSubmit} className="space-y-4 bg-card border border-border rounded-lg p-6">
+              <div className="space-y-2">
+                <Label htmlFor="contact-name">Your Name</Label>
+                <Input
+                  id="contact-name"
+                  placeholder="John Doe"
+                  value={contactForm.name}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="contact-email">Email Address</Label>
+                <Input
+                  id="contact-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={contactForm.email}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="contact-subject">Subject</Label>
+                <Input
+                  id="contact-subject"
+                  placeholder="How can we help?"
+                  value={contactForm.subject}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, subject: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="contact-message">Message</Label>
+                <Textarea
+                  id="contact-message"
+                  placeholder="Describe your issue or question..."
+                  rows={5}
+                  value={contactForm.message}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <Button type="submit" size="lg" className="w-full" disabled={sending}>
+                {sending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Message
+                  </>
+                )}
+              </Button>
+            </form>
           </div>
         </section>
       </main>
