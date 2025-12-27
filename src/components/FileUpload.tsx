@@ -63,7 +63,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const droppedFiles = Array.from(e.dataTransfer.files).slice(0, 10);
+    const droppedFiles = Array.from(e.dataTransfer.files).slice(0, 50);
     if (droppedFiles.length > 0) {
       setFiles(droppedFiles);
       setShareLink("");
@@ -71,7 +71,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files ? Array.from(e.target.files).slice(0, 10) : [];
+    const selectedFiles = e.target.files ? Array.from(e.target.files).slice(0, 50) : [];
     if (selectedFiles.length > 0) {
       setFiles(selectedFiles);
       setShareLink("");
@@ -421,7 +421,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
                     Drop your files here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Up to 10 files, {user ? '2GB' : '500MB'} total
+                    Up to 50 files, {user ? '2GB' : '500MB'} total
                   </p>
                 </div>
               )}
