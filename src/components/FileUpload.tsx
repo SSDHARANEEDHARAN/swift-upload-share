@@ -450,7 +450,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
 
           {uploading && (
             <div className="flex flex-col items-center space-y-4">
-              <CircularProgress value={progress} size={140} strokeWidth={10} />
+              <CircularProgress value={progress} size={120} strokeWidth={8} />
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium text-foreground">
                   Uploading {currentFileIndex}/{files.length}
@@ -470,6 +470,31 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
                     {uploadSpeed.toFixed(2)} MB/s
                   </p>
                 )}
+              </div>
+              
+              {/* Individual file progress list */}
+              <div className="w-full max-h-40 overflow-y-auto border rounded-lg p-3 bg-muted/30">
+                <div className="space-y-2">
+                  {files.map((file, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm">
+                      {index < currentFileIndex ? (
+                        <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+                      ) : index === currentFileIndex - 1 || (currentFileIndex > 0 && index === currentFileIndex - 1) ? (
+                        <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+                      ) : index === currentFileIndex ? (
+                        <Loader2 className="w-4 h-4 text-accent animate-spin shrink-0" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                      )}
+                      <span className={`truncate ${index < currentFileIndex ? 'text-muted-foreground' : index === currentFileIndex ? 'text-foreground font-medium' : 'text-muted-foreground/60'}`}>
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-auto shrink-0">
+                        {(file.size / 1024 / 1024).toFixed(1)} MB
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
