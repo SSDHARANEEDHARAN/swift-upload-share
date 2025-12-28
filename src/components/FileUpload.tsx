@@ -34,6 +34,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   const [copied, setCopied] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadSpeed, setUploadSpeed] = useState(0);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [currentBatchId, setCurrentBatchId] = useState("");
   const [currentShareToken, setCurrentShareToken] = useState("");
@@ -92,6 +93,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     setUploading(true);
     setProgress(0);
     setUploadSpeed(0);
+    setEstimatedTimeRemaining(null);
     setCurrentFileIndex(0);
     setTotalBytes(totalSize);
     setSentBytes(0);
@@ -164,11 +166,19 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
               setProgress(Math.min(overallProgress, 99)); // Cap at 99% until confirmed
               setSentBytes(currentTotalUploaded);
 
-              // Calculate real upload speed
+              // Calculate real upload speed and ETA
               const elapsed = (Date.now() - startTime) / 1000;
               if (elapsed > 0) {
-                const speed = (currentTotalUploaded / (1024 * 1024)) / elapsed;
-                setUploadSpeed(speed);
+                const speedBytesPerSec = currentTotalUploaded / elapsed;
+                const speedMBps = speedBytesPerSec / (1024 * 1024);
+                setUploadSpeed(speedMBps);
+                
+                // Calculate remaining time
+                const remainingBytes = totalSize - currentTotalUploaded;
+                if (speedBytesPerSec > 0) {
+                  const remainingSeconds = remainingBytes / speedBytesPerSec;
+                  setEstimatedTimeRemaining(remainingSeconds);
+                }
               }
             }
           });
@@ -468,9 +478,21 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
                   </p>
                 )}
                 {uploadSpeed > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {uploadSpeed.toFixed(2)} MB/s
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      Speed: {uploadSpeed.toFixed(2)} MB/s
+                    </p>
+                    {estimatedTimeRemaining !== null && estimatedTimeRemaining > 0 && (
+                      <p className="text-xs font-medium text-primary">
+                        {estimatedTimeRemaining < 60 
+                          ? `~${Math.ceil(estimatedTimeRemaining)}s remaining`
+                          : estimatedTimeRemaining < 3600
+                            ? `~${Math.floor(estimatedTimeRemaining / 60)}m ${Math.ceil(estimatedTimeRemaining % 60)}s remaining`
+                            : `~${Math.floor(estimatedTimeRemaining / 3600)}h ${Math.floor((estimatedTimeRemaining % 3600) / 60)}m remaining`
+                        }
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
               
