@@ -181,10 +181,12 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
             }
           });
           
-          xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+          xhr.addEventListener('error', () => reject(new Error('Upload failed. Check your connection.')));
           xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+          xhr.addEventListener('timeout', () => reject(new Error('Upload timed out')));
           
           xhr.open('POST', uploadUrl);
+          xhr.timeout = 0; // No timeout for large files
           xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
           xhr.setRequestHeader('apikey', supabaseKey);
           xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');

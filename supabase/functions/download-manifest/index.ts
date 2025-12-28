@@ -84,7 +84,9 @@ serve(async (req) => {
     >;
 
     for (const file of activeRows) {
-      const urlExpiresInSeconds = 60 * 60; // 1 hour
+      // Longer expiry for large files (6 hours for files > 100MB, 1 hour otherwise)
+      const isLargeFile = file.file_size > 100 * 1024 * 1024;
+      const urlExpiresInSeconds = isLargeFile ? 6 * 60 * 60 : 60 * 60;
       const { data: signed, error: signedErr } = await supabaseAdmin.storage
         .from("transfers")
         .createSignedUrl(file.storage_path, urlExpiresInSeconds);

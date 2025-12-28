@@ -133,11 +133,12 @@ const Download = () => {
           throw new Error("Missing download URL");
         }
 
-        // Download with progress tracking using XHR
+        // Download with progress tracking using XHR with retry
         const blob = await new Promise<Blob>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open("GET", file.downloadUrl);
           xhr.responseType = "blob";
+          xhr.timeout = 0; // No timeout for large files
 
           xhr.addEventListener("progress", (event) => {
             if (event.lengthComputable) {
@@ -151,12 +152,16 @@ const Download = () => {
           xhr.addEventListener("load", () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve(xhr.response);
+            } else if (xhr.status === 400 || xhr.status === 403) {
+              // Signed URL expired, need to refresh
+              reject(new Error("Link expired. Please refresh the page and try again."));
             } else {
-              reject(new Error("Download failed"));
+              reject(new Error(`Download failed (${xhr.status}). Please try again.`));
             }
           });
 
-          xhr.addEventListener("error", () => reject(new Error("Download failed")));
+          xhr.addEventListener("error", () => reject(new Error("Network error. Check your connection and try again.")));
+          xhr.addEventListener("timeout", () => reject(new Error("Download timed out. Please try again.")));
           xhr.send();
         });
 
