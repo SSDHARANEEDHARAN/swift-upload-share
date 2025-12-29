@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,8 @@ import {
   Check, 
   Trash2,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Circle
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 
@@ -43,6 +44,15 @@ interface ChatMessage {
   created_at: string;
 }
 
+interface PresenceState {
+  [key: string]: {
+    user_id: string;
+    username: string;
+    online_at: string;
+    is_typing: boolean;
+  }[];
+}
+
 interface LiveChatProps {
   user: User | null;
 }
@@ -51,6 +61,7 @@ const MAX_PARTICIPANTS_GUEST = 2;
 const MAX_PARTICIPANTS_LOGGED_IN = 10;
 const INACTIVITY_WARNING_DAYS = 5;
 const WARNING_DURATION_HOURS = 5;
+const TYPING_TIMEOUT = 3000;
 
 export const LiveChat = ({ user }: LiveChatProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,7 +75,12 @@ export const LiveChat = ({ user }: LiveChatProps) => {
   const [pendingInvites, setPendingInvites] = useState<ChatParticipant[]>([]);
   const [loading, setLoading] = useState(false);
   const [myUsername, setMyUsername] = useState("");
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const { toast } = useToast();
 
   const maxParticipants = user ? MAX_PARTICIPANTS_LOGGED_IN : MAX_PARTICIPANTS_GUEST;
@@ -177,6 +193,89 @@ export const LiveChat = ({ user }: LiveChatProps) => {
     };
   }, [currentRoom]);
 
+  // Presence and typing indicators
+  useEffect(() => {
+    if (!currentRoom || !user || !myUsername) return;
+
+    const presenceChannel = supabase.channel(`presence-${currentRoom.id}`, {
+      config: {
+        presence: {
+          key: user.id,
+        },
+      },
+    });
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState() as PresenceState;
+        const onlineUserIds = Object.values(state)
+          .flat()
+          .map(p => p.user_id)
+          .filter(id => id !== user.id);
+        setOnlineUsers(onlineUserIds);
+
+        const typing = Object.values(state)
+          .flat()
+          .filter(p => p.is_typing && p.user_id !== user.id)
+          .map(p => p.username);
+        setTypingUsers(typing);
+      })
+      .on('presence', { event: 'join' }, ({ newPresences }) => {
+        console.log('User joined:', newPresences);
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        console.log('User left:', leftPresences);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            user_id: user.id,
+            username: myUsername,
+            online_at: new Date().toISOString(),
+            is_typing: false,
+          });
+        }
+      });
+
+    presenceChannelRef.current = presenceChannel;
+
+    return () => {
+      presenceChannel.unsubscribe();
+      presenceChannelRef.current = null;
+    };
+  }, [currentRoom, user, myUsername]);
+
+  // Handle typing indicator
+  const handleTyping = useCallback(() => {
+    if (!presenceChannelRef.current || !user || !myUsername) return;
+
+    if (!isTyping) {
+      setIsTyping(true);
+      presenceChannelRef.current.track({
+        user_id: user.id,
+        username: myUsername,
+        online_at: new Date().toISOString(),
+        is_typing: true,
+      });
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      if (presenceChannelRef.current && user && myUsername) {
+        presenceChannelRef.current.track({
+          user_id: user.id,
+          username: myUsername,
+          online_at: new Date().toISOString(),
+          is_typing: false,
+        });
+      }
+    }, TYPING_TIMEOUT);
+  }, [isTyping, user, myUsername]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -252,6 +351,22 @@ export const LiveChat = ({ user }: LiveChatProps) => {
     setLoading(false);
   };
 
+  const sendInviteNotification = async (recipientEmail: string, recipientName: string) => {
+    try {
+      await supabase.functions.invoke("send-chat-notification", {
+        body: {
+          type: "invitation",
+          recipientEmail,
+          recipientName,
+          inviterName: myUsername,
+          roomName: currentRoom?.name,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to send notification:", error);
+    }
+  };
+
   const addUserToRoom = async () => {
     if (!currentRoom || !usernameToAdd || !user) return;
 
@@ -297,6 +412,14 @@ export const LiveChat = ({ user }: LiveChatProps) => {
         });
 
       if (error) throw error;
+
+      // Send email notification
+      if (targetProfile.email) {
+        sendInviteNotification(
+          targetProfile.email,
+          targetProfile.display_name || targetProfile.email
+        );
+      }
 
       toast({
         title: "Success",
@@ -554,26 +677,34 @@ export const LiveChat = ({ user }: LiveChatProps) => {
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
                       </Button>
                     </div>
-                    {/* Participants List */}
+                    {/* Participants List with Online Status */}
                     <div className="mt-2 space-y-1">
-                      {participants.map(p => (
-                        <div key={p.id} className="flex items-center justify-between text-xs p-1 rounded bg-background">
-                          <span className={p.is_accepted ? "" : "text-muted-foreground"}>
-                            {p.username} {!p.is_accepted && "(pending)"}
-                            {p.user_id === currentRoom.admin_id && " (admin)"}
-                          </span>
-                          {isAdmin && p.user_id !== user.id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => removeParticipant(p.id)}
-                            >
-                              <Trash2 className="w-3 h-3 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
+                      {participants.map(p => {
+                        const isOnline = onlineUsers.includes(p.user_id) || p.user_id === user.id;
+                        return (
+                          <div key={p.id} className="flex items-center justify-between text-xs p-1 rounded bg-background">
+                            <div className="flex items-center gap-1.5">
+                              <Circle 
+                                className={`w-2 h-2 ${isOnline ? "fill-green-500 text-green-500" : "fill-muted text-muted"}`} 
+                              />
+                              <span className={p.is_accepted ? "" : "text-muted-foreground"}>
+                                {p.username} {!p.is_accepted && "(pending)"}
+                                {p.user_id === currentRoom.admin_id && " (admin)"}
+                              </span>
+                            </div>
+                            {isAdmin && p.user_id !== user.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => removeParticipant(p.id)}
+                              >
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -616,13 +747,23 @@ export const LiveChat = ({ user }: LiveChatProps) => {
                   </div>
                 </ScrollArea>
 
+                {/* Typing Indicator */}
+                {typingUsers.length > 0 && (
+                  <div className="px-3 py-1 text-xs text-muted-foreground animate-pulse">
+                    {typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...
+                  </div>
+                )}
+
                 {/* Message Input */}
                 <div className="p-3 border-t">
                   <div className="flex gap-2">
                     <Input
                       placeholder="Type a message..."
                       value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        handleTyping();
+                      }}
                       onKeyPress={(e) => e.key === "Enter" && sendMessage()}
                     />
                     <Button onClick={sendMessage} size="icon">
