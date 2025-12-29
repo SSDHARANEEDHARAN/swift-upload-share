@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import ApiDocs from "./pages/ApiDocs";
+import RTDesigner from "./pages/RTDesigner";
 
 // Image Tools
 import EditImage from "./pages/tools/EditImage";
@@ -108,6 +109,7 @@ const AnimatedRoutes = () => {
         <Route path="/terms" element={<AnimatedPage><Terms /></AnimatedPage>} />
         <Route path="/privacy" element={<AnimatedPage><Privacy /></AnimatedPage>} />
         <Route path="/api-docs" element={<AnimatedPage><ApiDocs /></AnimatedPage>} />
+        <Route path="/rt-designer" element={<AnimatedPage><RTDesigner /></AnimatedPage>} />
         
         <Route path="*" element={<AnimatedPage><NotFound /></AnimatedPage>} />
       </Routes>

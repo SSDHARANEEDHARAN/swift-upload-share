@@ -1,0 +1,640 @@
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  MessageCircle, 
+  X, 
+  Send, 
+  Plus, 
+  Users, 
+  Check, 
+  Trash2,
+  AlertTriangle,
+  Loader2
+} from "lucide-react";
+import { User } from "@supabase/supabase-js";
+
+interface ChatRoom {
+  id: string;
+  name: string;
+  admin_id: string;
+  last_activity_at: string;
+  warning_shown_at: string | null;
+}
+
+interface ChatParticipant {
+  id: string;
+  room_id: string;
+  user_id: string;
+  username: string;
+  is_accepted: boolean;
+}
+
+interface ChatMessage {
+  id: string;
+  room_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+}
+
+interface LiveChatProps {
+  user: User | null;
+}
+
+const MAX_PARTICIPANTS_GUEST = 2;
+const MAX_PARTICIPANTS_LOGGED_IN = 10;
+const INACTIVITY_WARNING_DAYS = 5;
+const WARNING_DURATION_HOURS = 5;
+
+export const LiveChat = ({ user }: LiveChatProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [participants, setParticipants] = useState<ChatParticipant[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentRoom, setCurrentRoom] = useState<ChatRoom | null>(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [usernameToAdd, setUsernameToAdd] = useState("");
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<ChatParticipant[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [myUsername, setMyUsername] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const maxParticipants = user ? MAX_PARTICIPANTS_LOGGED_IN : MAX_PARTICIPANTS_GUEST;
+
+  // Fetch user's rooms and pending invites
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      // Fetch rooms where user is a participant
+      const { data: participantData } = await supabase
+        .from("chat_participants")
+        .select("*, chat_rooms(*)")
+        .eq("user_id", user.id);
+
+      if (participantData) {
+        const userRooms = participantData
+          .filter(p => p.is_accepted)
+          .map(p => p.chat_rooms as unknown as ChatRoom)
+          .filter(Boolean);
+        setRooms(userRooms);
+
+        const pending = participantData.filter(p => !p.is_accepted);
+        setPendingInvites(pending);
+      }
+
+      // Get username from profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name, email")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setMyUsername(profile.display_name || profile.email || "");
+      }
+    };
+
+    fetchData();
+
+    // Subscribe to participant changes for pending invites
+    const channel = supabase
+      .channel("chat-invites")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "chat_participants",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Fetch messages for current room
+  useEffect(() => {
+    if (!currentRoom) return;
+
+    const fetchMessages = async () => {
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("room_id", currentRoom.id)
+        .order("created_at", { ascending: true });
+
+      if (data) {
+        setMessages(data);
+      }
+
+      // Fetch participants
+      const { data: parts } = await supabase
+        .from("chat_participants")
+        .select("*")
+        .eq("room_id", currentRoom.id);
+
+      if (parts) {
+        setParticipants(parts);
+      }
+    };
+
+    fetchMessages();
+
+    // Subscribe to new messages
+    const channel = supabase
+      .channel(`room-${currentRoom.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_messages",
+          filter: `room_id=eq.${currentRoom.id}`,
+        },
+        (payload) => {
+          setMessages(prev => [...prev, payload.new as ChatMessage]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentRoom]);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Check for inactive rooms warning
+  useEffect(() => {
+    if (!currentRoom) return;
+
+    const lastActivity = new Date(currentRoom.last_activity_at);
+    const now = new Date();
+    const daysSinceActivity = (now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (daysSinceActivity >= INACTIVITY_WARNING_DAYS) {
+      toast({
+        title: "Chat Inactivity Warning",
+        description: `This chat will be deleted in ${WARNING_DURATION_HOURS} hours if no activity.`,
+        variant: "destructive",
+      });
+    }
+  }, [currentRoom, toast]);
+
+  const createRoom = async () => {
+    if (!user || !myUsername) {
+      toast({
+        title: "Error",
+        description: "Please log in and set a username first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create room
+      const { data: room, error: roomError } = await supabase
+        .from("chat_rooms")
+        .insert({
+          name: `${myUsername}'s Chat`,
+          created_by: user.id,
+          admin_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (roomError) throw roomError;
+
+      // Add self as participant
+      const { error: partError } = await supabase
+        .from("chat_participants")
+        .insert({
+          room_id: room.id,
+          user_id: user.id,
+          username: myUsername,
+          is_accepted: true,
+        });
+
+      if (partError) throw partError;
+
+      setRooms(prev => [...prev, room]);
+      setCurrentRoom(room);
+      toast({
+        title: "Success",
+        description: "Chat room created!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+
+  const addUserToRoom = async () => {
+    if (!currentRoom || !usernameToAdd || !user) return;
+
+    // Check participant limit
+    const acceptedParticipants = participants.filter(p => p.is_accepted).length;
+    if (acceptedParticipants >= maxParticipants) {
+      toast({
+        title: "Error",
+        description: `Maximum ${maxParticipants} participants allowed.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Find user by display_name or email
+      const { data: targetProfile } = await supabase
+        .from("profiles")
+        .select("id, display_name, email")
+        .or(`display_name.ilike.%${usernameToAdd}%,email.ilike.%${usernameToAdd}%`)
+        .limit(1)
+        .single();
+
+      if (!targetProfile) {
+        toast({
+          title: "Error",
+          description: "User not found.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Add as pending participant
+      const { error } = await supabase
+        .from("chat_participants")
+        .insert({
+          room_id: currentRoom.id,
+          user_id: targetProfile.id,
+          username: targetProfile.display_name || targetProfile.email || usernameToAdd,
+          is_accepted: false,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Invitation sent! Waiting for user to accept.",
+      });
+      setUsernameToAdd("");
+      setShowAddUser(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+
+  const acceptInvite = async (invite: ChatParticipant) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("chat_participants")
+        .update({ is_accepted: true })
+        .eq("id", invite.id);
+
+      if (error) throw error;
+
+      // Fetch the room
+      const { data: room } = await supabase
+        .from("chat_rooms")
+        .select("*")
+        .eq("id", invite.room_id)
+        .single();
+
+      if (room) {
+        setRooms(prev => [...prev, room]);
+        setCurrentRoom(room);
+      }
+
+      setPendingInvites(prev => prev.filter(p => p.id !== invite.id));
+      toast({
+        title: "Success",
+        description: "You joined the chat!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+
+  const removeParticipant = async (participantId: string) => {
+    if (!currentRoom || currentRoom.admin_id !== user?.id) {
+      toast({
+        title: "Error",
+        description: "Only admin can remove participants.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("chat_participants")
+        .delete()
+        .eq("id", participantId);
+
+      if (error) throw error;
+
+      setParticipants(prev => prev.filter(p => p.id !== participantId));
+      toast({
+        title: "Success",
+        description: "Participant removed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!currentRoom || !newMessage.trim() || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from("chat_messages")
+        .insert({
+          room_id: currentRoom.id,
+          sender_id: user.id,
+          content: newMessage.trim(),
+        });
+
+      if (error) throw error;
+      setNewMessage("");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isAdmin = currentRoom?.admin_id === user?.id;
+
+  if (!user) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50">
+        <Button
+          onClick={() => setIsOpen(!isOpen)}
+          className="rounded-full w-14 h-14 shadow-lg"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </Button>
+        {isOpen && (
+          <Card className="absolute bottom-16 right-0 w-80 shadow-xl">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageCircle className="w-5 h-5" />
+                Live Chat
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm">
+                Please log in to use live chat.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50">
+      <Button
+        onClick={() => setIsOpen(!isOpen)}
+        className="rounded-full w-14 h-14 shadow-lg relative"
+      >
+        <MessageCircle className="w-6 h-6" />
+        {pendingInvites.length > 0 && (
+          <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs">
+            {pendingInvites.length}
+          </Badge>
+        )}
+      </Button>
+
+      {isOpen && (
+        <Card className="absolute bottom-16 right-0 w-96 h-[500px] shadow-xl flex flex-col">
+          <CardHeader className="pb-3 border-b flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageCircle className="w-5 h-5" />
+                Live Chat
+              </CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+            {/* Pending Invites */}
+            {pendingInvites.length > 0 && !currentRoom && (
+              <div className="p-3 border-b bg-accent/50">
+                <p className="text-sm font-medium mb-2">Pending Invites</p>
+                {pendingInvites.map(invite => (
+                  <div key={invite.id} className="flex items-center justify-between p-2 bg-card rounded">
+                    <span className="text-sm">Chat Invite</span>
+                    <Button size="sm" onClick={() => acceptInvite(invite)}>
+                      <Check className="w-4 h-4 mr-1" /> Accept
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!currentRoom ? (
+              /* Room List */
+              <div className="flex-1 overflow-auto p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium">Your Chats</span>
+                  <Button size="sm" onClick={createRoom} disabled={loading}>
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  </Button>
+                </div>
+                {rooms.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-8">
+                    No chats yet. Create one to start!
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {rooms.map(room => (
+                      <Button
+                        key={room.id}
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => setCurrentRoom(room)}
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        {room.name || "Chat Room"}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Chat View */
+              <>
+                <div className="p-3 border-b bg-muted/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCurrentRoom(null)}
+                    >
+                      ← Back
+                    </Button>
+                    <span className="font-medium text-sm">{currentRoom.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowAddUser(!showAddUser)}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <Badge variant="secondary">
+                      <Users className="w-3 h-3 mr-1" />
+                      {participants.filter(p => p.is_accepted).length}/{maxParticipants}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Add User Form */}
+                {showAddUser && isAdmin && (
+                  <div className="p-3 border-b bg-accent/30">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter username or email"
+                        value={usernameToAdd}
+                        onChange={(e) => setUsernameToAdd(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && addUserToRoom()}
+                      />
+                      <Button onClick={addUserToRoom} disabled={loading}>
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
+                      </Button>
+                    </div>
+                    {/* Participants List */}
+                    <div className="mt-2 space-y-1">
+                      {participants.map(p => (
+                        <div key={p.id} className="flex items-center justify-between text-xs p-1 rounded bg-background">
+                          <span className={p.is_accepted ? "" : "text-muted-foreground"}>
+                            {p.username} {!p.is_accepted && "(pending)"}
+                            {p.user_id === currentRoom.admin_id && " (admin)"}
+                          </span>
+                          {isAdmin && p.user_id !== user.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => removeParticipant(p.id)}
+                            >
+                              <Trash2 className="w-3 h-3 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Warning Banner */}
+                {currentRoom.warning_shown_at && (
+                  <div className="p-2 bg-destructive/10 border-b flex items-center gap-2 text-xs text-destructive">
+                    <AlertTriangle className="w-4 h-4" />
+                    Chat will be deleted due to inactivity!
+                  </div>
+                )}
+
+                {/* Messages */}
+                <ScrollArea className="flex-1 p-3">
+                  <div className="space-y-3">
+                    {messages.map(msg => {
+                      const sender = participants.find(p => p.user_id === msg.sender_id);
+                      const isMe = msg.sender_id === user.id;
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                        >
+                          <span className="text-xs text-muted-foreground mb-1">
+                            {sender?.username || "Unknown"}
+                          </span>
+                          <div
+                            className={`max-w-[80%] p-2 rounded-lg text-sm ${
+                              isMe
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted"
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+
+                {/* Message Input */}
+                <div className="p-3 border-t">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Type a message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+                    />
+                    <Button onClick={sendMessage} size="icon">
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};

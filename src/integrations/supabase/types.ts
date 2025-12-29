@@ -59,6 +59,106 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          room_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          room_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          room_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participants: {
+        Row: {
+          id: string
+          is_accepted: boolean | null
+          joined_at: string | null
+          room_id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          id?: string
+          is_accepted?: boolean | null
+          joined_at?: string | null
+          room_id: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          id?: string
+          is_accepted?: boolean | null
+          joined_at?: string | null
+          room_id?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_rooms: {
+        Row: {
+          admin_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          last_activity_at: string | null
+          name: string | null
+          warning_shown_at: string | null
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_activity_at?: string | null
+          name?: string | null
+          warning_shown_at?: string | null
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_activity_at?: string | null
+          name?: string | null
+          warning_shown_at?: string | null
+        }
+        Relationships: []
+      }
       files: {
         Row: {
           batch_id: string | null
