@@ -82,6 +82,14 @@ export const Footer = () => {
             <Link to="/privacy" className="hover:text-foreground transition-colors">
               Privacy Policy
             </Link>
+            <a 
+              href="/rt-designer" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+            >
+              Web designed by RT
+            </a>
           </div>
         </div>
       </div>
