@@ -286,9 +286,14 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_user_room_ids: { Args: { _user_id: string }; Returns: string[] }
       increment_download_count: {
         Args: { file_id: string }
         Returns: undefined
+      }
+      is_room_participant: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
