@@ -38,7 +38,7 @@ export const Header = ({ user }: HeaderProps) => {
               <Eye className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-display font-bold text-xl text-foreground group-hover:text-primary transition-colors">
-              Comingsoon
+              SAFE
             </span>
           </Link>
 

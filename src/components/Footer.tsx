@@ -12,7 +12,7 @@ export const Footer = () => {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <Eye className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-display font-bold text-lg">Comingsoon</span>
+              <span className="font-display font-bold text-lg">SAFE</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Fast, secure, and simple file sharing for everyone.
@@ -73,7 +73,7 @@ export const Footer = () => {
 
         <div className="border-t border-border mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Comingsoon. All rights reserved.
+            © {new Date().getFullYear()} SAFE. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <Link to="/terms" className="hover:text-foreground transition-colors">
