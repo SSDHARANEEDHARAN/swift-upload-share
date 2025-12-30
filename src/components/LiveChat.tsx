@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { 
   MessageCircle, 
@@ -34,6 +35,7 @@ interface ChatParticipant {
   user_id: string;
   username: string;
   is_accepted: boolean;
+  avatar_url?: string;
 }
 
 interface ChatMessage {
@@ -75,6 +77,7 @@ export const LiveChat = ({ user }: LiveChatProps) => {
   const [pendingInvites, setPendingInvites] = useState<ChatParticipant[]>([]);
   const [loading, setLoading] = useState(false);
   const [myUsername, setMyUsername] = useState("");
+  const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -107,15 +110,16 @@ export const LiveChat = ({ user }: LiveChatProps) => {
         setPendingInvites(pending);
       }
 
-      // Get username from profile
+      // Get username and avatar from profile
       const { data: profile } = await supabase
         .from("profiles")
-        .select("display_name, email")
+        .select("display_name, email, avatar_url")
         .eq("id", user.id)
         .single();
 
       if (profile) {
         setMyUsername(profile.display_name || profile.email || "");
+        setMyAvatarUrl(profile.avatar_url);
       }
     };
 
@@ -158,14 +162,25 @@ export const LiveChat = ({ user }: LiveChatProps) => {
         setMessages(data);
       }
 
-      // Fetch participants
+      // Fetch participants with their profile avatars
       const { data: parts } = await supabase
         .from("chat_participants")
         .select("*")
         .eq("room_id", currentRoom.id);
 
       if (parts) {
-        setParticipants(parts);
+        // Fetch avatar URLs for all participants
+        const userIds = parts.map(p => p.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, avatar_url")
+          .in("id", userIds);
+        
+        const participantsWithAvatars = parts.map(p => ({
+          ...p,
+          avatar_url: profiles?.find(pr => pr.id === p.user_id)?.avatar_url || undefined,
+        }));
+        setParticipants(participantsWithAvatars);
       }
     };
 
@@ -677,16 +692,23 @@ export const LiveChat = ({ user }: LiveChatProps) => {
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
                       </Button>
                     </div>
-                    {/* Participants List with Online Status */}
+                    {/* Participants List with Online Status and Avatars */}
                     <div className="mt-2 space-y-1">
                       {participants.map(p => {
                         const isOnline = onlineUsers.includes(p.user_id) || p.user_id === user.id;
+                        const initials = p.username.slice(0, 2).toUpperCase();
                         return (
                           <div key={p.id} className="flex items-center justify-between text-xs p-1 rounded bg-background">
                             <div className="flex items-center gap-1.5">
-                              <Circle 
-                                className={`w-2 h-2 ${isOnline ? "fill-green-500 text-green-500" : "fill-muted text-muted"}`} 
-                              />
+                              <div className="relative">
+                                <Avatar className="w-5 h-5">
+                                  <AvatarImage src={p.avatar_url || undefined} alt={p.username} />
+                                  <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
+                                </Avatar>
+                                <Circle 
+                                  className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 ${isOnline ? "fill-green-500 text-green-500" : "fill-muted text-muted"}`} 
+                                />
+                              </div>
                               <span className={p.is_accepted ? "" : "text-muted-foreground"}>
                                 {p.username} {!p.is_accepted && "(pending)"}
                                 {p.user_id === currentRoom.admin_id && " (admin)"}
@@ -723,22 +745,30 @@ export const LiveChat = ({ user }: LiveChatProps) => {
                     {messages.map(msg => {
                       const sender = participants.find(p => p.user_id === msg.sender_id);
                       const isMe = msg.sender_id === user.id;
+                      const avatarUrl = isMe ? myAvatarUrl : sender?.avatar_url;
+                      const initials = (sender?.username || "U").slice(0, 2).toUpperCase();
                       return (
                         <div
                           key={msg.id}
-                          className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                          className={`flex gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
                         >
-                          <span className="text-xs text-muted-foreground mb-1">
-                            {sender?.username || "Unknown"}
-                          </span>
-                          <div
-                            className={`max-w-[80%] p-2 rounded-lg text-sm ${
-                              isMe
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted"
-                            }`}
-                          >
-                            {msg.content}
+                          <Avatar className="w-8 h-8 flex-shrink-0">
+                            <AvatarImage src={avatarUrl || undefined} alt={sender?.username} />
+                            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                          </Avatar>
+                          <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                            <span className="text-xs text-muted-foreground mb-1">
+                              {sender?.username || "Unknown"}
+                            </span>
+                            <div
+                              className={`max-w-[200px] p-2 rounded-lg text-sm ${
+                                isMe
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted"
+                              }`}
+                            >
+                              {msg.content}
+                            </div>
                           </div>
                         </div>
                       );
