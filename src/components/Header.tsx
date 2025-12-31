@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, User, Upload, History, Menu, X, LayoutDashboard, Eye } from "lucide-react";
+import { LogOut, User, Upload, History, Menu, X, LayoutDashboard, Shield } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -35,7 +35,7 @@ export const Header = ({ user }: HeaderProps) => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Eye className="w-5 h-5 text-primary-foreground" />
+              <Shield className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-display font-bold text-xl text-foreground group-hover:text-primary transition-colors">
               SAFE
