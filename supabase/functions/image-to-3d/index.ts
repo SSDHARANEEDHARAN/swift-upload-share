@@ -1,8 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -14,6 +12,11 @@ serve(async (req) => {
   }
 
   try {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
+    }
+
     const { image } = await req.json();
 
     if (!image) {
@@ -23,17 +26,17 @@ serve(async (req) => {
       );
     }
 
-    console.log('Generating 3D model from image');
+    console.log('Analyzing image for 3D model generation');
 
-    // Analyze image for 3D reconstruction
-    const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Use Lovable AI Gateway to analyze the image for 3D reconstruction
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'user',
@@ -49,22 +52,37 @@ serve(async (req) => {
             ]
           }
         ],
-        max_tokens: 1000
       }),
     });
 
-    if (!analysisResponse.ok) {
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       throw new Error('Failed to analyze image');
     }
 
-    const analysisData = await analysisResponse.json();
-    const modelDescription = analysisData.choices[0].message.content;
+    const data = await response.json();
+    const modelDescription = data.choices?.[0]?.message?.content;
 
     return new Response(
       JSON.stringify({ 
         message: '3D model analysis complete',
         description: modelDescription,
-        note: 'Full 3D model generation requires specialized 3D AI services like Point-E or similar'
+        note: 'The AI has analyzed your image and provided detailed 3D modeling specifications.'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

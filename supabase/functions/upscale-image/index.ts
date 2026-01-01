@@ -1,8 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -14,7 +12,12 @@ serve(async (req) => {
   }
 
   try {
-    const { image, scale } = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
+    }
+
+    const { image, scale = 2 } = await req.json();
 
     if (!image) {
       return new Response(
@@ -23,25 +26,24 @@ serve(async (req) => {
       );
     }
 
-    const targetScale = scale || 2;
-    console.log('Upscaling image by', targetScale, 'x');
+    console.log('Upscaling image with scale:', scale);
 
-    // Use GPT-4o to analyze and enhance the image
-    const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Use Lovable AI Gateway with image generation model
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'google/gemini-2.5-flash-image-preview',
         messages: [
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Describe this image in extreme detail for recreation at higher resolution. Include colors, textures, subjects, lighting, style, and composition.'
+                text: `Upscale and enhance this image to ${scale}x resolution. Maintain all details, improve sharpness, and enhance quality while keeping the original content exactly the same. Create a high-resolution, detailed version.`
               },
               {
                 type: 'image_url',
@@ -50,51 +52,41 @@ serve(async (req) => {
             ]
           }
         ],
-        max_tokens: 1000
+        modalities: ['image', 'text']
       }),
     });
 
-    if (!analysisResponse.ok) {
-      const errorData = await analysisResponse.text();
-      console.error('Analysis error:', errorData);
-      throw new Error('Failed to analyze image');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      throw new Error('Failed to upscale image');
     }
 
-    const analysisData = await analysisResponse.json();
-    const description = analysisData.choices[0].message.content;
-
-    // Generate high-quality version
-    const size = targetScale >= 3 ? '1792x1024' : '1024x1024';
-    
-    const genResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-image-1',
-        prompt: `Create a high-resolution, ultra-detailed version of this image: ${description}. Make it extremely sharp, clear, and detailed.`,
-        n: 1,
-        size: size,
-        quality: 'high',
-      }),
-    });
-
-    if (!genResponse.ok) {
-      const errorData = await genResponse.text();
-      console.error('Generation error:', errorData);
-      throw new Error('Failed to generate upscaled image');
-    }
-
-    const genData = await genResponse.json();
+    const data = await response.json();
     console.log('Image upscaled successfully');
 
+    const generatedImage = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (!generatedImage) {
+      throw new Error('No image generated');
+    }
+
     return new Response(
-      JSON.stringify({ 
-        image: genData.data[0].b64_json || genData.data[0].url,
-        scale: targetScale
-      }),
+      JSON.stringify({ image: generatedImage, scale }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
