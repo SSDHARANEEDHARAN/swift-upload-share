@@ -1,8 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -14,6 +12,11 @@ serve(async (req) => {
   }
 
   try {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
+    }
+
     const { image, prompt } = await req.json();
 
     if (!image || !prompt) {
@@ -25,61 +28,66 @@ serve(async (req) => {
 
     console.log('Editing image with prompt:', prompt);
 
-    const response = await fetch('https://api.openai.com/v1/images/edits', {
+    // Use Lovable AI Gateway with image generation model
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-image-1',
-        image: image,
-        prompt: prompt,
-        n: 1,
-        size: '1024x1024',
+        model: 'google/gemini-2.5-flash-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Edit this image according to the following instruction: ${prompt}`
+              },
+              {
+                type: 'image_url',
+                image_url: { url: image }
+              }
+            ]
+          }
+        ],
+        modalities: ['image', 'text']
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
+      const errorText = await response.text();
+      console.error('Lovable AI error:', response.status, errorText);
       
-      // Fallback to image generation with description
-      const genResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-image-1',
-          prompt: `Edit this image: ${prompt}. Create a new version that incorporates these changes.`,
-          n: 1,
-          size: '1024x1024',
-        }),
-      });
-
-      if (!genResponse.ok) {
-        const genError = await genResponse.text();
-        console.error('OpenAI generation error:', genError);
+      if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Failed to process image' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-
-      const genData = await genResponse.json();
-      return new Response(
-        JSON.stringify({ image: genData.data[0].b64_json || genData.data[0].url }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      throw new Error('Failed to process image');
     }
 
     const data = await response.json();
     console.log('Image edited successfully');
 
+    // Extract the generated image from the response
+    const generatedImage = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (!generatedImage) {
+      throw new Error('No image generated');
+    }
+
     return new Response(
-      JSON.stringify({ image: data.data[0].b64_json || data.data[0].url }),
+      JSON.stringify({ image: generatedImage }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
