@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, ZoomIn, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { handleAIError } from "@/hooks/useAIErrorHandler";
 
 const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?w=400&q=60";
 
@@ -77,7 +78,20 @@ const UpscaleImage = () => {
         body: { image: imagePreview, scale: parseInt(scale) },
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorBody = error.message || '';
+        if (errorBody.includes('429') || errorBody.includes('rate limit')) {
+          throw { message: 'Rate limit exceeded. Please try again later.', status: 429 };
+        }
+        if (errorBody.includes('402') || errorBody.includes('credits')) {
+          throw { message: 'AI credits exhausted. Please add credits to continue.', status: 402 };
+        }
+        throw error;
+      }
+
+      if (data?.error) {
+        throw { message: data.error };
+      }
 
       if (data.image) {
         const imageUrl = data.image.startsWith("data:") 
@@ -94,9 +108,7 @@ const UpscaleImage = () => {
       }
     } catch (error: any) {
       console.error("Upscale error:", error);
-      setStatus("error");
-      setStatusMessage(error.message || "Failed to upscale image");
-      toast.error("Failed to upscale image");
+      handleAIError(error, setStatus as any, setStatusMessage);
     }
   };
 

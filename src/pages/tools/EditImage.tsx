@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Download, Wand2, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { handleAIError } from "@/hooks/useAIErrorHandler";
 
 const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80";
 
@@ -78,7 +79,21 @@ const EditImage = () => {
         body: { image: imagePreview, prompt: prompt.trim() },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check for specific error status codes
+        const errorBody = error.message || '';
+        if (errorBody.includes('429') || errorBody.includes('rate limit')) {
+          throw { message: 'Rate limit exceeded. Please try again later.', status: 429 };
+        }
+        if (errorBody.includes('402') || errorBody.includes('credits')) {
+          throw { message: 'AI credits exhausted. Please add credits to continue.', status: 402 };
+        }
+        throw error;
+      }
+
+      if (data?.error) {
+        throw { message: data.error };
+      }
 
       if (data.image) {
         const imageUrl = data.image.startsWith("data:") 
@@ -93,9 +108,7 @@ const EditImage = () => {
       }
     } catch (error: any) {
       console.error("Edit error:", error);
-      setStatus("error");
-      setStatusMessage(error.message || "Failed to edit image");
-      toast.error("Failed to edit image");
+      handleAIError(error, setStatus as any, setStatusMessage);
     }
   };
 

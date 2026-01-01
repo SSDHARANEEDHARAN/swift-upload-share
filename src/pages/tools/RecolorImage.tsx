@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Download, Palette, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { handleAIError } from "@/hooks/useAIErrorHandler";
 
 const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80";
 
@@ -80,7 +81,20 @@ const RecolorImage = () => {
         body: { image: imagePreview, fromColor: fromColor.trim(), toColor: toColor.trim() },
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorBody = error.message || '';
+        if (errorBody.includes('429') || errorBody.includes('rate limit')) {
+          throw { message: 'Rate limit exceeded. Please try again later.', status: 429 };
+        }
+        if (errorBody.includes('402') || errorBody.includes('credits')) {
+          throw { message: 'AI credits exhausted. Please add credits to continue.', status: 402 };
+        }
+        throw error;
+      }
+
+      if (data?.error) {
+        throw { message: data.error };
+      }
 
       if (data.image) {
         const imageUrl = data.image.startsWith("data:") 
@@ -97,9 +111,7 @@ const RecolorImage = () => {
       }
     } catch (error: any) {
       console.error("Recolor error:", error);
-      setStatus("error");
-      setStatusMessage(error.message || "Failed to recolor image");
-      toast.error("Failed to recolor image");
+      handleAIError(error, setStatus as any, setStatusMessage);
     }
   };
 
