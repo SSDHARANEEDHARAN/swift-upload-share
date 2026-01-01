@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.cleanup-chat-rooms]
 verify_jwt = false
+
+[functions.secure-pdf]
+verify_jwt = false
+
+[functions.send-chat-notification]
+verify_jwt = false
