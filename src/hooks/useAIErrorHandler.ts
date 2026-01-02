@@ -60,10 +60,6 @@ export const handleAIError = (error: any, setStatus: (status: string) => void, s
       toast.error('Credits Exhausted', {
         description: parsedError.message,
         duration: 8000,
-        action: {
-          label: 'Learn More',
-          onClick: () => window.open('https://docs.lovable.dev/features/ai', '_blank')
-        }
       });
       break;
     case 'network':
