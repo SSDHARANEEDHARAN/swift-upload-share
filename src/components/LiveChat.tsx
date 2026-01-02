@@ -383,7 +383,7 @@ export const LiveChat = ({ user }: LiveChatProps) => {
   };
 
   const addUserToRoom = async () => {
-    if (!currentRoom || !usernameToAdd || !user) return;
+    if (!currentRoom || !usernameToAdd.trim() || !user) return;
 
     // Check participant limit
     const acceptedParticipants = participants.filter(p => p.is_accepted).length;
@@ -398,18 +398,55 @@ export const LiveChat = ({ user }: LiveChatProps) => {
 
     setLoading(true);
     try {
-      // Find user by display_name or email
-      const { data: targetProfile } = await supabase
+      // Find user by exact email match (case insensitive)
+      const searchTerm = usernameToAdd.trim().toLowerCase();
+      
+      const { data: targetProfiles, error: searchError } = await supabase
         .from("profiles")
         .select("id, display_name, email")
-        .or(`display_name.ilike.%${usernameToAdd}%,email.ilike.%${usernameToAdd}%`)
-        .limit(1)
-        .single();
+        .or(`email.ilike.${searchTerm},display_name.ilike.${searchTerm}`)
+        .limit(1);
 
-      if (!targetProfile) {
+      if (searchError) {
+        console.error("Profile search error:", searchError);
         toast({
           title: "Error",
-          description: "User not found.",
+          description: "Failed to search for user. Please try again.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!targetProfiles || targetProfiles.length === 0) {
+        toast({
+          title: "User Not Found",
+          description: "No user found with that email or username. Make sure they have an account and have logged in at least once.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const targetProfile = targetProfiles[0];
+
+      // Check if user is already a participant
+      const existingParticipant = participants.find(p => p.user_id === targetProfile.id);
+      if (existingParticipant) {
+        toast({
+          title: "Already Added",
+          description: "This user is already in the chat or has a pending invitation.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Can't add yourself
+      if (targetProfile.id === user.id) {
+        toast({
+          title: "Error",
+          description: "You can't add yourself to the chat.",
           variant: "destructive",
         });
         setLoading(false);
@@ -437,15 +474,16 @@ export const LiveChat = ({ user }: LiveChatProps) => {
       }
 
       toast({
-        title: "Success",
-        description: "Invitation sent! Waiting for user to accept.",
+        title: "Invitation Sent",
+        description: `Invitation sent to ${targetProfile.display_name || targetProfile.email}. Waiting for them to accept.`,
       });
       setUsernameToAdd("");
       setShowAddUser(false);
     } catch (error: any) {
+      console.error("Add user error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to add user. Please try again.",
         variant: "destructive",
       });
     }
