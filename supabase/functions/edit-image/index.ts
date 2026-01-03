@@ -62,7 +62,9 @@ async function prepareFetchableImageUrl(
   const ext = extFromContentType(contentType);
   const path = `ai-temp/${crypto.randomUUID()}.${ext}`;
 
-  const uploadBody = new Blob([bytes], { type: contentType });
+  const ab = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(ab).set(bytes);
+  const uploadBody = new Blob([ab], { type: contentType });
   const { error: uploadError } = await supabaseAdmin.storage
     .from(BUCKET)
     .upload(path, uploadBody, { contentType, upsert: true });

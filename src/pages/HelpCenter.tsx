@@ -12,19 +12,18 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { 
-  Search, 
-  Wand2, 
-  ZoomIn, 
-  Palette, 
-  Eraser, 
-  PenTool, 
-  Box, 
+import {
+  Search,
+  Wand2,
+  ZoomIn,
+  Palette,
+  Eraser,
+  PenTool,
+  Box,
   Video,
   FileText,
   Minimize2,
   Lock,
-  Settings,
   FileSpreadsheet,
   Presentation,
   Archive,
@@ -33,7 +32,7 @@ import {
   HelpCircle,
   Mail,
   Send,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -59,7 +58,6 @@ const toolDocs = [
       { name: "Compress PDF", icon: Minimize2, href: "/tools/compress-pdf", description: "Reduce PDF file size while maintaining quality.", howTo: ["Upload your PDF file", "Click 'Compress PDF'", "Download the smaller file"] },
       { name: "Images to PDF", icon: Image, href: "/tools/images-to-pdf", description: "Combine multiple images into a single PDF document.", howTo: ["Upload multiple images", "Arrange order if needed", "Click 'Create PDF'", "Download combined PDF"] },
       { name: "Password Protect PDF", icon: Lock, href: "/tools/password-protect-pdf", description: "Add password encryption to protect sensitive PDFs.", howTo: ["Upload your PDF", "Enter desired password", "Click 'Protect PDF'", "Download encrypted file"] },
-      { name: "Set PDF Permissions", icon: Settings, href: "/tools/set-pdf-permissions", description: "Control printing, copying, and editing permissions.", howTo: ["Upload your PDF", "Select permissions to allow/restrict", "Click 'Apply Permissions'", "Download secured PDF"] },
       { name: "Word to PDF", icon: FileText, href: "/tools/word-to-pdf", description: "Convert DOC/DOCX files to PDF format.", howTo: ["Upload Word document", "Click 'Convert to PDF'", "Download PDF file"] },
       { name: "Excel to PDF", icon: FileSpreadsheet, href: "/tools/excel-to-pdf", description: "Convert Excel spreadsheets to PDF.", howTo: ["Upload XLS/XLSX file", "Click 'Convert to PDF'", "Download PDF file"] },
       { name: "PowerPoint to PDF", icon: Presentation, href: "/tools/ppt-to-pdf", description: "Convert PPT presentations to PDF.", howTo: ["Upload PowerPoint file", "Click 'Convert to PDF'", "Download PDF file"] },
