@@ -111,15 +111,35 @@ export const LiveChat = ({ user }: LiveChatProps) => {
       }
 
       // Get username and avatar from profile
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("display_name, email, avatar_url")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         setMyUsername(profile.display_name || profile.email || "");
         setMyAvatarUrl(profile.avatar_url);
+      } else {
+        const fallbackEmail = user.email || "";
+        const fallbackName = fallbackEmail || `user-${user.id.slice(0, 6)}`;
+
+        setMyUsername(fallbackName);
+
+        // Best-effort: ensure the profile row exists so other users can find you.
+        if (fallbackEmail) {
+          const { error: insertError } = await supabase.from("profiles").insert({
+            id: user.id,
+            email: fallbackEmail,
+            display_name: fallbackEmail.split("@")[0],
+          });
+
+          if (insertError) {
+            console.warn("Failed to auto-create profile row:", insertError);
+          }
+        } else if (profileError) {
+          console.warn("Profile missing and no email available:", profileError);
+        }
       }
     };
 
