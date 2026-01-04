@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserSearchAutocomplete } from "@/components/UserSearchAutocomplete";
 import { useToast } from "@/hooks/use-toast";
 import { 
   MessageCircle, 
@@ -72,7 +73,6 @@ export const LiveChat = ({ user }: LiveChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentRoom, setCurrentRoom] = useState<ChatRoom | null>(null);
   const [newMessage, setNewMessage] = useState("");
-  const [usernameToAdd, setUsernameToAdd] = useState("");
   const [showAddUser, setShowAddUser] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<ChatParticipant[]>([]);
   const [loading, setLoading] = useState(false);
@@ -402,8 +402,8 @@ export const LiveChat = ({ user }: LiveChatProps) => {
     }
   };
 
-  const addUserToRoom = async () => {
-    if (!currentRoom || !usernameToAdd.trim() || !user) return;
+  const addUserToRoom = async (profile: { id: string; display_name: string | null; email: string | null }) => {
+    if (!currentRoom || !user) return;
 
     // Check participant limit
     const acceptedParticipants = participants.filter(p => p.is_accepted).length;
@@ -416,88 +416,53 @@ export const LiveChat = ({ user }: LiveChatProps) => {
       return;
     }
 
+    // Check if user is already a participant
+    const existingParticipant = participants.find(p => p.user_id === profile.id);
+    if (existingParticipant) {
+      toast({
+        title: "Already Added",
+        description: "This user is already in the chat or has a pending invitation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Can't add yourself
+    if (profile.id === user.id) {
+      toast({
+        title: "Error",
+        description: "You can't add yourself to the chat.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      // Find user by exact email match (case insensitive)
-      const searchTerm = usernameToAdd.trim().toLowerCase();
-      
-      const { data: targetProfiles, error: searchError } = await supabase
-        .from("profiles")
-        .select("id, display_name, email")
-        .or(`email.ilike.${searchTerm},display_name.ilike.${searchTerm}`)
-        .limit(1);
-
-      if (searchError) {
-        console.error("Profile search error:", searchError);
-        toast({
-          title: "Error",
-          description: "Failed to search for user. Please try again.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (!targetProfiles || targetProfiles.length === 0) {
-        toast({
-          title: "User Not Found",
-          description: "No user found with that email or username. Make sure they have an account and have logged in at least once.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      const targetProfile = targetProfiles[0];
-
-      // Check if user is already a participant
-      const existingParticipant = participants.find(p => p.user_id === targetProfile.id);
-      if (existingParticipant) {
-        toast({
-          title: "Already Added",
-          description: "This user is already in the chat or has a pending invitation.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Can't add yourself
-      if (targetProfile.id === user.id) {
-        toast({
-          title: "Error",
-          description: "You can't add yourself to the chat.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
       // Add as pending participant
       const { error } = await supabase
         .from("chat_participants")
         .insert({
           room_id: currentRoom.id,
-          user_id: targetProfile.id,
-          username: targetProfile.display_name || targetProfile.email || usernameToAdd,
+          user_id: profile.id,
+          username: profile.display_name || profile.email || "User",
           is_accepted: false,
         });
 
       if (error) throw error;
 
       // Send email notification
-      if (targetProfile.email) {
+      if (profile.email) {
         sendInviteNotification(
-          targetProfile.email,
-          targetProfile.display_name || targetProfile.email
+          profile.email,
+          profile.display_name || profile.email
         );
       }
 
       toast({
         title: "Invitation Sent",
-        description: `Invitation sent to ${targetProfile.display_name || targetProfile.email}. Waiting for them to accept.`,
+        description: `Invitation sent to ${profile.display_name || profile.email}. Waiting for them to accept.`,
       });
-      setUsernameToAdd("");
       setShowAddUser(false);
     } catch (error: any) {
       console.error("Add user error:", error);
@@ -739,16 +704,12 @@ export const LiveChat = ({ user }: LiveChatProps) => {
                 {/* Add User Form */}
                 {showAddUser && isAdmin && (
                   <div className="p-3 border-b bg-accent/30">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter username or email"
-                        value={usernameToAdd}
-                        onChange={(e) => setUsernameToAdd(e.target.value)}
-                        onKeyPress={(e) => e.key === "Enter" && addUserToRoom()}
+                    <div className="mb-2">
+                      <UserSearchAutocomplete
+                        onSelect={(profile) => addUserToRoom(profile)}
+                        excludeIds={[user.id, ...participants.map(p => p.user_id)]}
+                        placeholder="Search by email or name..."
                       />
-                      <Button onClick={addUserToRoom} disabled={loading}>
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
-                      </Button>
                     </div>
                     {/* Participants List with Online Status and Avatars */}
                     <div className="mt-2 space-y-1">

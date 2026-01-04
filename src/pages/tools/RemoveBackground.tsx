@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { ToolPageLayout } from "@/components/ToolPageLayout";
 import { ImageDropzone } from "@/components/ImageDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
+import { AIStatusBanner } from "@/components/AIStatusBanner";
 import { Button } from "@/components/ui/button";
 import { Download, Eraser, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { pipeline, env } from "@huggingface/transformers";
+import { parseAIError, type AIError } from "@/hooks/useAIErrorHandler";
 
 // Configure for browser use
 env.allowLocalModels = false;
@@ -21,6 +23,7 @@ const RemoveBackground = () => {
   const [result, setResult] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
+  const [aiError, setAiError] = useState<AIError | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -31,6 +34,7 @@ const RemoveBackground = () => {
   const handleImageSelect = (file: File) => {
     setSelectedImage(file);
     setResult(null);
+    setAiError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
       setImagePreview(e.target?.result as string);
@@ -43,6 +47,7 @@ const RemoveBackground = () => {
     setImagePreview(null);
     setResult(null);
     setStatus("idle");
+    setAiError(null);
   };
 
   const handleUseSampleImage = async () => {
@@ -149,8 +154,10 @@ const RemoveBackground = () => {
       toast.success("Background removed!");
     } catch (error: any) {
       console.error("Background removal error:", error);
+      const parsedError = parseAIError(error);
+      setAiError(parsedError);
       setStatus("error");
-      setStatusMessage(error.message || "Failed to remove background");
+      setStatusMessage(parsedError.message);
       toast.error("Failed to remove background. Try a different image.");
     }
   };
@@ -201,6 +208,8 @@ const RemoveBackground = () => {
         )}
 
         <ProcessingStatus status={status} message={statusMessage} />
+
+        <AIStatusBanner error={aiError} onRetry={handleRemoveBackground} />
 
         {result && (
           <div className="space-y-4">

@@ -45,6 +45,7 @@ const pdfTools = [
   { title: "Compress PDF", description: "Instantly compress your PDF files to reduce their size.", icon: Minimize2, href: "/tools/compress-pdf" },
   { title: "Convert Images to PDF", description: "Convert PNG, JPG, and other image files to PDF quickly.", icon: Image, href: "/tools/images-to-pdf" },
   { title: "Password Protect PDF", description: "Encrypt your PDF with a password to protect sensitive content.", icon: Lock, href: "/tools/password-protect-pdf" },
+  { title: "Set PDF Permissions", description: "Control printing, copying, and editing permissions on your PDFs.", icon: Shield, href: "/tools/set-pdf-permissions" },
   { title: "Convert Word to PDF", description: "Convert DOC or DOCX files to PDF format seamlessly.", icon: FileText, href: "/tools/word-to-pdf" },
   { title: "Convert Excel to PDF", description: "Convert XLS, XLSX files to PDF—tables preserved.", icon: FileSpreadsheet, href: "/tools/excel-to-pdf" },
   { title: "Convert PowerPoint to PDF", description: "Convert PPT presentations to PDF—online and free.", icon: Presentation, href: "/tools/ppt-to-pdf" },
