@@ -42,6 +42,7 @@ import PDFToWord from "./pages/tools/PDFToWord";
 import PDFToExcel from "./pages/tools/PDFToExcel";
 import PDFToPPT from "./pages/tools/PDFToPPT";
 import PDFToPDFA from "./pages/tools/PDFToPDFA";
+import SetPDFPermissions from "./pages/tools/SetPDFPermissions";
 
 const queryClient = new QueryClient();
 
@@ -281,6 +282,14 @@ const AnimatedRoutes = () => {
           element={
             <AnimatedPage>
               <PDFToPDFA />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/tools/set-pdf-permissions"
+          element={
+            <AnimatedPage>
+              <SetPDFPermissions />
             </AnimatedPage>
           }
         />
