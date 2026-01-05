@@ -10,12 +10,14 @@ const corsHeaders = {
 };
 
 interface ChatNotificationRequest {
-  type: "invitation" | "expiring";
+  type: "invitation" | "expiring" | "new_message";
   recipientEmail: string;
   recipientName: string;
   inviterName?: string;
+  senderName?: string;
   roomName?: string;
   expiresIn?: string;
+  messagePreview?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -24,7 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { type, recipientEmail, recipientName, inviterName, roomName, expiresIn }: ChatNotificationRequest = await req.json();
+    const { type, recipientEmail, recipientName, inviterName, senderName, roomName, expiresIn, messagePreview }: ChatNotificationRequest = await req.json();
 
     let subject: string;
     let html: string;
@@ -46,6 +48,31 @@ const handler = async (req: Request): Promise<Response> => {
           <a href="${Deno.env.get("SITE_URL") || "https://swift-upload-share.lovable.app"}" 
              style="display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 16px;">
             Open Chat
+          </a>
+          <p style="color: #999; font-size: 14px; margin-top: 24px;">
+            Best regards,<br>Swift Upload & Share Team
+          </p>
+        </div>
+      `;
+    } else if (type === "new_message") {
+      subject = `New message from ${senderName} in ${roomName || 'Chat'}`;
+      html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #333; font-size: 24px;">💬 New Message</h1>
+          <p style="color: #666; font-size: 16px; line-height: 1.5;">
+            Hi ${recipientName},
+          </p>
+          <p style="color: #666; font-size: 16px; line-height: 1.5;">
+            <strong>${senderName}</strong> sent a message in "${roomName || 'Chat'}":
+          </p>
+          <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #7c3aed;">
+            <p style="color: #333; font-size: 16px; margin: 0; font-style: italic;">
+              "${messagePreview || 'New message'}"
+            </p>
+          </div>
+          <a href="${Deno.env.get("SITE_URL") || "https://swift-upload-share.lovable.app"}" 
+             style="display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 16px;">
+            Reply Now
           </a>
           <p style="color: #999; font-size: 14px; margin-top: 24px;">
             Best regards,<br>Swift Upload & Share Team

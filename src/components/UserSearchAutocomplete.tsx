@@ -3,13 +3,14 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Circle } from "lucide-react";
 
 interface UserProfile {
   id: string;
   display_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  is_online?: boolean;
 }
 
 interface UserSearchAutocompleteProps {
@@ -55,7 +56,9 @@ export const UserSearchAutocomplete = ({
       setLoading(true);
       try {
         const searchTerm = query.trim().toLowerCase();
-        const { data, error } = await supabase
+        
+        // Fetch profiles
+        const { data: profilesData, error } = await supabase
           .from("profiles")
           .select("id, display_name, email, avatar_url")
           .or(`email.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`)
@@ -66,9 +69,28 @@ export const UserSearchAutocomplete = ({
           setResults([]);
         } else {
           // Filter out excluded IDs
-          const filtered = (data || []).filter((p) => !excludeIds.includes(p.id));
-          setResults(filtered);
-          setShowDropdown(filtered.length > 0);
+          const filtered = (profilesData || []).filter((p) => !excludeIds.includes(p.id));
+          
+          // Fetch online status for filtered users
+          const userIds = filtered.map(p => p.id);
+          const { data: presenceData } = await supabase
+            .from("user_presence")
+            .select("user_id, is_online, last_seen_at")
+            .in("user_id", userIds);
+          
+          // Merge presence data
+          const now = Date.now();
+          const fiveMinutesAgo = now - 5 * 60 * 1000;
+          
+          const resultsWithPresence = filtered.map(profile => {
+            const presence = presenceData?.find(p => p.user_id === profile.id);
+            const isOnline = presence?.is_online && 
+              new Date(presence.last_seen_at).getTime() > fiveMinutesAgo;
+            return { ...profile, is_online: !!isOnline };
+          });
+          
+          setResults(resultsWithPresence);
+          setShowDropdown(resultsWithPresence.length > 0);
         }
       } catch (err) {
         console.error("Search error:", err);
@@ -120,12 +142,26 @@ export const UserSearchAutocomplete = ({
                   onClick={() => handleSelect(profile)}
                   className="w-full flex items-center gap-3 p-2 hover:bg-accent text-left transition-colors"
                 >
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={profile.avatar_url || undefined} alt={displayName} />
-                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium truncate">{profile.display_name || "No name"}</span>
+                  <div className="relative">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={profile.avatar_url || undefined} alt={displayName} />
+                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                    </Avatar>
+                    <Circle 
+                      className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${
+                        profile.is_online 
+                          ? "fill-green-500 text-green-500" 
+                          : "fill-muted-foreground/30 text-muted-foreground/30"
+                      }`} 
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium truncate">{profile.display_name || "No name"}</span>
+                      <span className={`text-xs ${profile.is_online ? "text-green-500" : "text-muted-foreground"}`}>
+                        {profile.is_online ? "Online" : "Offline"}
+                      </span>
+                    </div>
                     <span className="text-xs text-muted-foreground truncate">{profile.email}</span>
                   </div>
                 </button>

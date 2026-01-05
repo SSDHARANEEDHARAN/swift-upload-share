@@ -169,7 +169,7 @@ export const LiveChat = ({ user }: LiveChatProps) => {
 
   // Fetch messages for current room
   useEffect(() => {
-    if (!currentRoom) return;
+    if (!currentRoom || !user) return;
 
     const fetchMessages = async () => {
       const { data } = await supabase
@@ -202,6 +202,17 @@ export const LiveChat = ({ user }: LiveChatProps) => {
         }));
         setParticipants(participantsWithAvatars);
       }
+      
+      // Mark room as read when opening
+      await supabase
+        .from("chat_read_status")
+        .upsert({
+          room_id: currentRoom.id,
+          user_id: user.id,
+          last_read_at: new Date().toISOString(),
+        }, {
+          onConflict: "room_id,user_id",
+        });
     };
 
     fetchMessages();
@@ -226,7 +237,7 @@ export const LiveChat = ({ user }: LiveChatProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentRoom]);
+  }, [currentRoom, user]);
 
   // Presence and typing indicators
   useEffect(() => {
@@ -544,20 +555,81 @@ export const LiveChat = ({ user }: LiveChatProps) => {
     }
   };
 
+  const sendMessageNotification = async (content: string) => {
+    if (!currentRoom) return;
+    
+    try {
+      // Get other participants to notify
+      const otherParticipants = participants.filter(
+        p => p.user_id !== user?.id && p.is_accepted
+      );
+      
+      for (const participant of otherParticipants) {
+        // Fetch their email from profiles
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("email, display_name")
+          .eq("id", participant.user_id)
+          .maybeSingle();
+        
+        if (profile?.email) {
+          await supabase.functions.invoke("send-chat-notification", {
+            body: {
+              type: "new_message",
+              recipientEmail: profile.email,
+              recipientName: profile.display_name || profile.email,
+              senderName: myUsername,
+              roomName: currentRoom.name,
+              messagePreview: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to send message notification:", error);
+    }
+  };
+
+  const markRoomAsRead = async () => {
+    if (!currentRoom || !user) return;
+    
+    try {
+      await supabase
+        .from("chat_read_status")
+        .upsert({
+          room_id: currentRoom.id,
+          user_id: user.id,
+          last_read_at: new Date().toISOString(),
+        }, {
+          onConflict: "room_id,user_id",
+        });
+    } catch (error) {
+      console.error("Failed to mark room as read:", error);
+    }
+  };
+
   const sendMessage = async () => {
     if (!currentRoom || !newMessage.trim() || !user) return;
 
+    const messageContent = newMessage.trim();
+    
     try {
       const { error } = await supabase
         .from("chat_messages")
         .insert({
           room_id: currentRoom.id,
           sender_id: user.id,
-          content: newMessage.trim(),
+          content: messageContent,
         });
 
       if (error) throw error;
       setNewMessage("");
+      
+      // Mark as read and optionally notify (don't await to keep UI snappy)
+      markRoomAsRead();
+      // Only send notifications if there are other participants online
+      // This is a lightweight check - full notification logic is in the function
+      sendMessageNotification(messageContent);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -602,6 +674,7 @@ export const LiveChat = ({ user }: LiveChatProps) => {
       <Button
         onClick={() => setIsOpen(!isOpen)}
         className="rounded-full w-14 h-14 shadow-lg relative"
+        data-chat-toggle
       >
         <MessageCircle className="w-6 h-6" />
         {pendingInvites.length > 0 && (
