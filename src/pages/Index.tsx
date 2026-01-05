@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ToolCard } from "@/components/ToolCard";
 import { LiveChat } from "@/components/LiveChat";
+import { RecentChatsPreview } from "@/components/RecentChatsPreview";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { usePresence } from "@/hooks/usePresence";
 import {
   Upload,
   Shield,
@@ -72,6 +74,10 @@ type FilterType = "all" | "image" | "pdf" | "upload";
 const Index = () => {
   const [user, setUser] = useState<any>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const liveChatRef = useRef<{ open: () => void }>(null);
+
+  // Track user presence for online status
+  usePresence(user);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -84,6 +90,12 @@ const Index = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleOpenChat = () => {
+    // Trigger live chat to open
+    const chatButton = document.querySelector('[data-chat-toggle]') as HTMLButtonElement;
+    chatButton?.click();
+  };
 
   const filters: { id: FilterType; label: string }[] = [
     { id: "all", label: "All Tools" },
@@ -149,6 +161,15 @@ const Index = () => {
             </div>
           </div>
         </section>
+
+        {/* Recent Chats Preview for logged-in users */}
+        {user && (
+          <section className="px-4 sm:px-6 pb-8">
+            <div className="max-w-md mx-auto">
+              <RecentChatsPreview user={user} onOpenChat={handleOpenChat} />
+            </div>
+          </section>
+        )}
 
         <section className="px-4 sm:px-6 py-20 bg-card/50 border-y border-border">
           <div className="max-w-7xl mx-auto">
