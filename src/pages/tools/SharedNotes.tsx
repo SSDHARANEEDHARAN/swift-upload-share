@@ -4,7 +4,7 @@ import { ToolPageLayout } from "@/components/ToolPageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Share2, Plus, Trash2, Users, Link2, Check } from "lucide-react";
+import { Copy, Share2, Plus, Users, Link2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -148,23 +148,8 @@ const SharedNotes = () => {
     toast.success("New note created!");
   };
 
-  const deleteNote = async () => {
-    if (!note?.id) return;
-
-    const { error } = await supabase
-      .from("shared_notes")
-      .delete()
-      .eq("id", note.id);
-
-    if (error) {
-      toast.error("Failed to delete note");
-      return;
-    }
-
-    toast.success("Note deleted");
-    navigate("/tools/shared-notes");
-    setNote(null);
-  };
+  // Note: Delete functionality removed for security reasons
+  // Notes are now permanent - users can create new notes instead
 
   const copyShareLink = () => {
     if (!note?.share_token) return;
@@ -263,9 +248,6 @@ const SharedNotes = () => {
             <Button variant="outline" size="sm" onClick={createNewNote} className="gap-2">
               <Plus className="w-4 h-4" />
               New Note
-            </Button>
-            <Button variant="destructive" size="sm" onClick={deleteNote} className="gap-2">
-              <Trash2 className="w-4 h-4" />
             </Button>
           </div>
         </div>
