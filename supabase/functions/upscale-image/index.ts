@@ -168,7 +168,8 @@ serve(async (req) => {
     const generatedImage = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (!generatedImage) {
-      throw new Error("No image generated");
+      console.error("No image in response. Full response:", JSON.stringify(data));
+      throw new Error("No image generated. The AI model may not have produced an image for this prompt.");
     }
 
     return new Response(JSON.stringify({ image: generatedImage, scale }), {
