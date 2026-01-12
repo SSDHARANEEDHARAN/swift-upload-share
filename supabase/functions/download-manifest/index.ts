@@ -84,9 +84,13 @@ serve(async (req) => {
     >;
 
     for (const file of activeRows) {
-      // Longer expiry for large files (6 hours for files > 100MB, 1 hour otherwise)
+      // Longer expiry for large files:
+      // - Files > 1GB: 24 hours (for very large downloads)
+      // - Files > 100MB: 6 hours
+      // - Otherwise: 1 hour
+      const isVeryLargeFile = file.file_size > 1024 * 1024 * 1024;
       const isLargeFile = file.file_size > 100 * 1024 * 1024;
-      const urlExpiresInSeconds = isLargeFile ? 6 * 60 * 60 : 60 * 60;
+      const urlExpiresInSeconds = isVeryLargeFile ? 24 * 60 * 60 : isLargeFile ? 6 * 60 * 60 : 60 * 60;
       const { data: signed, error: signedErr } = await supabaseAdmin.storage
         .from("transfers")
         .createSignedUrl(file.storage_path, urlExpiresInSeconds);
