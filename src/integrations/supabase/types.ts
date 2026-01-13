@@ -334,6 +334,14 @@ export type Database = {
         }
       }
       get_online_user_ids: { Args: never; Returns: string[] }
+      get_profile_public_info: {
+        Args: { user_ids: string[] }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+        }[]
+      }
       get_unread_counts: {
         Args: { p_user_id: string }
         Returns: {
@@ -349,6 +357,15 @@ export type Database = {
       is_room_participant: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
+      }
+      search_users_safe: {
+        Args: { search_term: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+          is_online: boolean
+        }[]
       }
     }
     Enums: {
