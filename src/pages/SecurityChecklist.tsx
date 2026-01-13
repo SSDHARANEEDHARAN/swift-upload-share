@@ -10,6 +10,7 @@ import {
   Shield,
   ShieldCheck,
   ShieldAlert,
+  ShieldX,
   ExternalLink,
   CheckCircle2,
   XCircle,
@@ -35,9 +36,11 @@ interface SecurityCheck {
 
 const SecurityChecklist = () => {
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [checks, setChecks] = useState<SecurityCheck[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,7 +50,7 @@ const SecurityChecklist = () => {
         return;
       }
       setUser(session.user);
-      runSecurityChecks();
+      checkAdminAndLoadData(session.user.id);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -61,72 +64,101 @@ const SecurityChecklist = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const checkAdminAndLoadData = async (userId: string) => {
+    try {
+      // Check if user is admin using the RPC function
+      const { data: adminCheck, error: adminError } = await supabase.rpc("is_admin");
+      
+      if (adminError) {
+        console.error("Admin check error:", adminError);
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
+
+      setIsAdmin(adminCheck === true);
+
+      if (adminCheck === true) {
+        await runSecurityChecks();
+      } else {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Error checking admin status:", err);
+      setIsAdmin(false);
+      setLoading(false);
+    }
+  };
+
   const runSecurityChecks = async () => {
     setRefreshing(true);
-    
-    // Simulate security checks - in a real app, these would check actual settings
-    const securityChecks: SecurityCheck[] = [
-      {
-        id: "leaked-password-protection",
-        name: "Leaked Password Protection",
-        description: "Blocks users from using passwords that have been exposed in data breaches.",
-        status: "warning", // This would be checked via an API in production
-        category: "authentication",
-        actionLabel: "Enable in Settings",
-        details: "Navigate to Settings → Cloud → Advanced settings and enable 'Leaked Password Protection'.",
-      },
-      {
-        id: "email-confirmation",
-        name: "Email Confirmation",
-        description: "Requires users to verify their email address before accessing the app.",
-        status: "pass",
-        category: "authentication",
-      },
-      {
-        id: "password-requirements",
-        name: "Strong Password Requirements",
-        description: "Enforces minimum password length, uppercase letters, and numbers.",
-        status: "pass",
-        category: "authentication",
-        details: "Passwords require at least 8 characters, one uppercase letter, and one number.",
-      },
-      {
-        id: "rls-enabled",
-        name: "Row Level Security (RLS)",
-        description: "Database tables are protected with row-level security policies.",
-        status: "pass",
-        category: "database",
-        details: "All sensitive tables have RLS enabled with appropriate policies.",
-      },
-      {
-        id: "api-rate-limiting",
-        name: "API Rate Limiting",
-        description: "Protects against abuse by limiting the number of API requests.",
-        status: "pass",
-        category: "api",
-        details: "Rate limiting is configured for API endpoints.",
-      },
-      {
-        id: "secure-file-storage",
-        name: "Secure File Storage",
-        description: "Files are stored with proper access controls and expire after 7 days.",
-        status: "pass",
-        category: "general",
-      },
-      {
-        id: "input-validation",
-        name: "Input Validation",
-        description: "User inputs are validated and sanitized to prevent injection attacks.",
-        status: "pass",
-        category: "general",
-        details: "Zod schemas validate all user inputs on forms.",
-      },
-    ];
+    setError(null);
 
-    setChecks(securityChecks);
-    setLoading(false);
-    setRefreshing(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("No session");
+      }
+
+      const response = await supabase.functions.invoke("security-status", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to fetch security status");
+      }
+
+      if (response.data?.checks) {
+        setChecks(response.data.checks);
+      }
+    } catch (err: any) {
+      console.error("Security check error:", err);
+      setError(err.message || "Failed to load security status");
+      // Fall back to static checks if edge function fails
+      setChecks(getStaticChecks());
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
+
+  const getStaticChecks = (): SecurityCheck[] => [
+    {
+      id: "leaked-password-protection",
+      name: "Leaked Password Protection",
+      description: "Blocks users from using passwords exposed in data breaches.",
+      status: "warning",
+      category: "authentication",
+      actionLabel: "Enable in Settings",
+      details: "Navigate to Settings → Cloud → Advanced settings and enable 'Leaked Password Protection'.",
+    },
+    {
+      id: "password-requirements",
+      name: "Strong Password Requirements",
+      description: "Enforces minimum password length, uppercase letters, and numbers.",
+      status: "pass",
+      category: "authentication",
+      details: "Passwords require at least 8 characters, one uppercase letter, and one number.",
+    },
+    {
+      id: "rls-enabled",
+      name: "Row Level Security (RLS)",
+      description: "Database tables are protected with row-level security policies.",
+      status: "pass",
+      category: "database",
+      details: "All sensitive tables have RLS enabled with appropriate policies.",
+    },
+    {
+      id: "input-validation",
+      name: "Input Validation",
+      description: "User inputs are validated and sanitized to prevent injection attacks.",
+      status: "pass",
+      category: "general",
+      details: "Zod schemas validate all user inputs on forms.",
+    },
+  ];
 
   const handleRefresh = () => {
     toast.info("Refreshing security status...");
@@ -178,6 +210,33 @@ const SecurityChecklist = () => {
 
   if (!user) return null;
 
+  // Access denied view for non-admins
+  if (isAdmin === false) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header user={user} />
+        <main className="flex-1 pt-24 pb-16 px-4 sm:px-6">
+          <div className="max-w-md mx-auto text-center">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-destructive/10 flex items-center justify-center">
+              <ShieldX className="w-8 h-8 text-destructive" />
+            </div>
+            <h1 className="text-2xl font-display font-bold text-foreground mb-2">
+              Access Denied
+            </h1>
+            <p className="text-muted-foreground mb-6">
+              The Security Checklist is restricted to administrators only.
+              Contact an admin if you need access.
+            </p>
+            <Button onClick={() => navigate("/dashboard")}>
+              Go to Dashboard
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header user={user} />
@@ -197,10 +256,22 @@ const SecurityChecklist = () => {
                 </div>
               )}
               <div>
-                <h1 className="text-3xl font-display font-bold text-foreground">Security Checklist</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-display font-bold text-foreground">Security Checklist</h1>
+                  <Badge variant="outline" className="text-xs">Admin Only</Badge>
+                </div>
                 <p className="text-muted-foreground">Review and manage your security settings.</p>
               </div>
             </div>
+
+            {/* Error Alert */}
+            {error && (
+              <Card className="border-destructive/30 bg-destructive/5 mb-4">
+                <CardContent className="py-3">
+                  <p className="text-sm text-destructive">{error}</p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Summary Card */}
             <Card className={hasIssues ? "border-orange-500/30 bg-orange-500/5" : "border-primary/30 bg-primary/5"}>

@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, X, ShieldAlert, ExternalLink } from "lucide-react";
+import { X, ShieldAlert, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SecurityBannerProps {
-  /** Only show for authenticated users */
-  requireAuth?: boolean;
+  /** Only show for admin users */
+  requireAdmin?: boolean;
 }
 
-export const SecurityBanner = ({ requireAuth = true }: SecurityBannerProps) => {
+export const SecurityBanner = ({ requireAdmin = true }: SecurityBannerProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Check if banner was dismissed in this session
@@ -22,26 +22,43 @@ export const SecurityBanner = ({ requireAuth = true }: SecurityBannerProps) => {
       return;
     }
 
-    // Check authentication status
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session?.user);
-      
-      // For admins/authenticated users, show the banner
-      // In a real app, you'd check for admin role here
-      if (session?.user) {
+    // Check authentication and admin status
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) {
+        return;
+      }
+
+      if (requireAdmin) {
+        // Check if user is admin using the RPC function
+        const { data: adminCheck } = await supabase.rpc("is_admin");
+        setIsAdmin(adminCheck === true);
+        
+        if (adminCheck === true) {
+          setIsVisible(true);
+        }
+      } else {
         setIsVisible(true);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session?.user);
-      if (session?.user && !isDismissed) {
-        setIsVisible(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session?.user) {
+        setIsVisible(false);
+        return;
+      }
+
+      if (requireAdmin && !isDismissed) {
+        const { data: adminCheck } = await supabase.rpc("is_admin");
+        setIsAdmin(adminCheck === true);
+        
+        if (adminCheck === true) {
+          setIsVisible(true);
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [isDismissed]);
+  }, [isDismissed, requireAdmin]);
 
   const handleDismiss = () => {
     setIsVisible(false);
@@ -49,8 +66,8 @@ export const SecurityBanner = ({ requireAuth = true }: SecurityBannerProps) => {
     sessionStorage.setItem("security-banner-dismissed", "true");
   };
 
-  // Don't show if dismissed or if auth is required but user isn't authenticated
-  if (isDismissed || !isVisible || (requireAuth && !isAuthenticated)) {
+  // Don't show if dismissed, not visible, or if admin is required but user isn't admin
+  if (isDismissed || !isVisible || (requireAdmin && !isAdmin)) {
     return null;
   }
 
