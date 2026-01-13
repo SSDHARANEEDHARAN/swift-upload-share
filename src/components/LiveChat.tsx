@@ -406,6 +406,7 @@ export const LiveChat = ({ user }: LiveChatProps) => {
           recipientName,
           inviterName: myUsername,
           roomName: currentRoom?.name,
+          roomId: currentRoom?.id,
         },
       });
     } catch (error) {
@@ -580,6 +581,7 @@ export const LiveChat = ({ user }: LiveChatProps) => {
               recipientName: profile.display_name || profile.email,
               senderName: myUsername,
               roomName: currentRoom.name,
+              roomId: currentRoom.id,
               messagePreview: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
             },
           });

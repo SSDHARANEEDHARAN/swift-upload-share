@@ -391,6 +391,15 @@ export type Database = {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
+      search_users_for_chat: {
+        Args: { search_term: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          email: string
+          id: string
+        }[]
+      }
       search_users_safe: {
         Args: { search_term: string }
         Returns: {
