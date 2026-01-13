@@ -3,11 +3,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cleanup-secret',
 };
 
 const INACTIVITY_DAYS = 5;
 const WARNING_HOURS = 5;
+
+// Secret for authenticating cleanup calls - uses same secret as cleanup-expired-files
+const CLEANUP_SECRET = Deno.env.get("CLEANUP_SECRET");
+
+if (!CLEANUP_SECRET) {
+  console.error("CLEANUP_SECRET environment variable must be set");
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,6 +22,16 @@ serve(async (req) => {
   }
 
   try {
+    // Validate the cleanup secret to prevent unauthorized access
+    const providedSecret = req.headers.get("x-cleanup-secret");
+    if (!CLEANUP_SECRET || providedSecret !== CLEANUP_SECRET) {
+      console.warn("Unauthorized cleanup attempt - invalid or missing secret");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
