@@ -6,8 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cleanup-secret",
 };
 
-// Secret for authenticating cron/scheduled calls
-const CLEANUP_SECRET = Deno.env.get("CLEANUP_SECRET") || "default-cleanup-secret-change-me";
+// Secret for authenticating cron/scheduled calls - REQUIRED, no default fallback
+const CLEANUP_SECRET = Deno.env.get("CLEANUP_SECRET");
+
+// Fail early if secret is not configured
+if (!CLEANUP_SECRET) {
+  console.error("CLEANUP_SECRET environment variable must be set");
+}
 
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -18,7 +23,7 @@ serve(async (req: Request) => {
   try {
     // Validate the cleanup secret to prevent unauthorized access
     const providedSecret = req.headers.get("x-cleanup-secret");
-    if (providedSecret !== CLEANUP_SECRET) {
+    if (!CLEANUP_SECRET || providedSecret !== CLEANUP_SECRET) {
       console.warn("Unauthorized cleanup attempt - invalid or missing secret");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),

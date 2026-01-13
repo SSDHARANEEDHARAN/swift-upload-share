@@ -287,6 +287,38 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_notes_revisions: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          note_id: string
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          note_id: string
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          note_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_notes_revisions_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "shared_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_presence: {
         Row: {
           is_online: boolean
@@ -340,6 +372,7 @@ export type Database = {
           avatar_url: string
           display_name: string
           id: string
+          is_online: boolean
         }[]
       }
       get_unread_counts: {
