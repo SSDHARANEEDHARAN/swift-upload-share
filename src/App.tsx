@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ProfileBootstrap } from "@/components/ProfileBootstrap";
+import { SecurityBanner } from "@/components/SecurityBanner";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Download from "./pages/Download";
@@ -19,6 +20,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import ApiDocs from "./pages/ApiDocs";
 import RTDesigner from "./pages/RTDesigner";
+import SecurityChecklist from "./pages/SecurityChecklist";
 
 // Image Tools
 import EditImage from "./pages/tools/EditImage";
@@ -343,6 +345,14 @@ const AnimatedRoutes = () => {
             </AnimatedPage>
           }
         />
+        <Route
+          path="/security-checklist"
+          element={
+            <AnimatedPage>
+              <SecurityChecklist />
+            </AnimatedPage>
+          }
+        />
 
         <Route
           path="*"
@@ -365,6 +375,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <SecurityBanner />
             <ProfileBootstrap />
             <AnimatedRoutes />
           </BrowserRouter>
