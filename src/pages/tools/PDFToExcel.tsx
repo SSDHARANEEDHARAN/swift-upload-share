@@ -4,7 +4,7 @@ import { FileDropzone } from "@/components/FileDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
 import { Download, FileSpreadsheet } from "lucide-react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -34,25 +34,32 @@ const PDFToExcel = () => {
 
     try {
       // Note: Full PDF table extraction requires server-side OCR
-      // This creates a template Excel file
-      const workbook = XLSX.utils.book_new();
-      const data = [
-        ["PDF to Excel Conversion"],
-        [""],
-        ["Source File:", selectedFile.name],
-        [""],
-        ["Note: Full PDF table extraction with accurate formatting"],
-        ["requires server-side OCR processing."],
-        [""],
-        ["For complex PDFs with tables, consider using"],
-        ["dedicated PDF to Excel conversion services."]
-      ];
+      // This creates a template Excel file using exceljs
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Converted");
       
-      const worksheet = XLSX.utils.aoa_to_sheet(data);
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Converted");
+      // Add header row with styling
+      worksheet.addRow(["PDF to Excel Conversion"]);
+      worksheet.addRow([""]);
+      worksheet.addRow(["Source File:", selectedFile.name]);
+      worksheet.addRow([""]);
+      worksheet.addRow(["Note: Full PDF table extraction with accurate formatting"]);
+      worksheet.addRow(["requires server-side OCR processing."]);
+      worksheet.addRow([""]);
+      worksheet.addRow(["For complex PDFs with tables, consider using"]);
+      worksheet.addRow(["dedicated PDF to Excel conversion services."]);
       
-      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      // Style the header
+      const headerCell = worksheet.getCell("A1");
+      headerCell.font = { bold: true, size: 14 };
+      
+      // Auto-fit column width
+      worksheet.getColumn(1).width = 50;
+      worksheet.getColumn(2).width = 40;
+      
+      // Generate buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       
       setResult(URL.createObjectURL(blob));
       setStatus("success");

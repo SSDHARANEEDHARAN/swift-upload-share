@@ -4,7 +4,7 @@ import { FileDropzone } from "@/components/FileDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
 import { Download, FileSpreadsheet } from "lucide-react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createPdfFromExcelData, downloadBlob } from "@/lib/pdf-utils";
@@ -35,12 +35,31 @@ const ExcelToPDF = () => {
 
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
       
-      const sheets = workbook.SheetNames.map((sheetName) => {
-        const sheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
-        return { name: sheetName, rows: data };
+      const sheets = workbook.worksheets.map((worksheet) => {
+        const rows: string[][] = [];
+        worksheet.eachRow({ includeEmpty: false }, (row) => {
+          const rowValues: string[] = [];
+          row.eachCell({ includeEmpty: true }, (cell) => {
+            // Handle different cell value types
+            const value = cell.value;
+            if (value === null || value === undefined) {
+              rowValues.push("");
+            } else if (typeof value === "object" && "result" in value) {
+              // Formula cell - use the result
+              rowValues.push(String(value.result ?? ""));
+            } else if (typeof value === "object" && "richText" in value) {
+              // Rich text - concatenate text parts
+              rowValues.push((value.richText as Array<{ text: string }>).map(t => t.text).join(""));
+            } else {
+              rowValues.push(String(value));
+            }
+          });
+          rows.push(rowValues);
+        });
+        return { name: worksheet.name, rows };
       });
 
       const blob = await createPdfFromExcelData(sheets);
