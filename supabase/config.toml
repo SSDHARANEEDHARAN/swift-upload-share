@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.send-chat-notification]
 verify_jwt = false
+
+[functions.verify-api-key]
+verify_jwt = false
