@@ -62,9 +62,10 @@ export const ApiKeyManager = () => {
 
   const fetchApiKeys = async () => {
     setLoading(true);
+    // Explicitly select only safe columns - exclude key_hash from client queries
     const { data, error } = await supabase
       .from("api_keys")
-      .select("*")
+      .select("id, user_id, name, key_prefix, created_at, last_used_at, expires_at, is_revoked, request_count, rate_limit, rate_limit_reset_at")
       .order("created_at", { ascending: false });
 
     if (error) {

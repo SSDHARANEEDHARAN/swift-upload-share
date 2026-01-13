@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -16,6 +17,7 @@ interface ChatNotificationRequest {
   inviterName?: string;
   senderName?: string;
   roomName?: string;
+  roomId?: string;
   expiresIn?: string;
   messagePreview?: string;
 }
@@ -26,8 +28,115 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { type, recipientEmail, recipientName, inviterName, senderName, roomName, expiresIn, messagePreview }: ChatNotificationRequest = await req.json();
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - missing authorization header" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify the token and get user
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      console.error("Auth error:", authError);
+      return new Response(
+        JSON.stringify({ error: "Invalid or expired token" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const { 
+      type, 
+      recipientEmail, 
+      recipientName, 
+      inviterName, 
+      senderName, 
+      roomName, 
+      roomId,
+      expiresIn, 
+      messagePreview 
+    }: ChatNotificationRequest = await req.json();
+
+    // Validate required fields
+    if (!type || !recipientEmail || !recipientName) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: type, recipientEmail, recipientName" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(recipientEmail)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email format" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Verify sender permissions based on notification type
+    if (type === "invitation" || type === "new_message") {
+      if (!roomId) {
+        return new Response(
+          JSON.stringify({ error: "roomId is required for invitation and new_message notifications" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Use service role to verify sender is a participant of the room
+      const supabaseServiceClient = createClient(
+        supabaseUrl,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } }
+      );
+
+      const { data: participant, error: participantError } = await supabaseServiceClient
+        .from("chat_participants")
+        .select("id, is_accepted")
+        .eq("room_id", roomId)
+        .eq("user_id", user.id)
+        .eq("is_accepted", true)
+        .maybeSingle();
+
+      if (participantError || !participant) {
+        console.error("Participant check failed:", participantError);
+        return new Response(
+          JSON.stringify({ error: "You are not an authorized participant of this chat room" }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Verify recipient is in the profiles table (exists in system)
+      const { data: recipientProfile, error: recipientError } = await supabaseServiceClient
+        .from("profiles")
+        .select("id")
+        .eq("email", recipientEmail)
+        .maybeSingle();
+
+      if (recipientError) {
+        console.error("Recipient lookup error:", recipientError);
+      }
+
+      // Allow notification only if recipient exists in system
+      if (!recipientProfile) {
+        return new Response(
+          JSON.stringify({ error: "Recipient is not a registered user" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+
+    // Build email content based on type
     let subject: string;
     let html: string;
 
@@ -111,7 +220,7 @@ const handler = async (req: Request): Promise<Response> => {
       html,
     });
 
-    console.log("Chat notification sent:", emailResponse);
+    console.log("Chat notification sent:", { type, recipient: recipientEmail, sender: user.id });
 
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
