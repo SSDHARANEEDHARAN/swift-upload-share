@@ -22,7 +22,7 @@ interface UserSearchAutocompleteProps {
 export const UserSearchAutocomplete = ({
   onSelect,
   excludeIds = [],
-  placeholder = "Search by email or name...",
+  placeholder = "Search by name...",
 }: UserSearchAutocompleteProps) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserProfile[]>([]);
@@ -55,42 +55,30 @@ export const UserSearchAutocomplete = ({
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const searchTerm = query.trim().toLowerCase();
+        const searchTerm = query.trim();
         
-        // Fetch profiles
-        const { data: profilesData, error } = await supabase
-          .from("profiles")
-          .select("id, display_name, email, avatar_url")
-          .or(`email.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`)
-          .limit(5);
+        // Use secure search function that doesn't expose emails
+        const { data: searchResults, error } = await supabase
+          .rpc("search_users_safe", { search_term: searchTerm });
 
         if (error) {
           console.error("Search error:", error);
           setResults([]);
         } else {
-          // Filter out excluded IDs
-          const filtered = (profilesData || []).filter((p) => !excludeIds.includes(p.id));
+          // Filter out excluded IDs and map to expected format
+          const filtered = (searchResults || [])
+            .filter((p: { id: string }) => !excludeIds.includes(p.id))
+            .slice(0, 5)
+            .map((p: { id: string; display_name: string | null; avatar_url: string | null; is_online: boolean }) => ({
+              id: p.id,
+              display_name: p.display_name,
+              email: null, // Email is no longer exposed for privacy
+              avatar_url: p.avatar_url,
+              is_online: p.is_online,
+            }));
           
-          // Fetch online status for filtered users
-          const userIds = filtered.map(p => p.id);
-          const { data: presenceData } = await supabase
-            .from("user_presence")
-            .select("user_id, is_online, last_seen_at")
-            .in("user_id", userIds);
-          
-          // Merge presence data
-          const now = Date.now();
-          const fiveMinutesAgo = now - 5 * 60 * 1000;
-          
-          const resultsWithPresence = filtered.map(profile => {
-            const presence = presenceData?.find(p => p.user_id === profile.id);
-            const isOnline = presence?.is_online && 
-              new Date(presence.last_seen_at).getTime() > fiveMinutesAgo;
-            return { ...profile, is_online: !!isOnline };
-          });
-          
-          setResults(resultsWithPresence);
-          setShowDropdown(resultsWithPresence.length > 0);
+          setResults(filtered);
+          setShowDropdown(filtered.length > 0);
         }
       } catch (err) {
         console.error("Search error:", err);
@@ -162,7 +150,6 @@ export const UserSearchAutocomplete = ({
                         {profile.is_online ? "Online" : "Offline"}
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground truncate">{profile.email}</span>
                   </div>
                 </button>
               );
