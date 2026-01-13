@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Loader2, HandMetal, DoorOpen, Mail, ArrowLeft } from "lucide-react";
 import { z } from "zod";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { PasswordStrengthMeter } from "@/components/PasswordStrengthMeter";
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Please enter a valid email address"),
@@ -375,9 +376,7 @@ export const Auth = () => {
                     minLength={8}
                     className="h-12 bg-secondary border-border"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Min 8 characters, include uppercase and number
-                  </p>
+                  <PasswordStrengthMeter password={newPassword} />
                 </div>
 
                 <Button
@@ -460,11 +459,7 @@ export const Auth = () => {
                     minLength={view === "login" ? 6 : 8}
                     className="h-12 bg-secondary border-border"
                   />
-                  {view === "signup" && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Min 8 characters, include uppercase and number
-                    </p>
-                  )}
+                  {view === "signup" && <PasswordStrengthMeter password={password} />}
                 </div>
 
                 {view === "login" && (
