@@ -40,7 +40,7 @@ export async function createPdfFromText(text: string): Promise<Blob> {
   }
 
   const pdfBytes = await pdfDoc.save();
-  return new Blob([pdfBytes.buffer], { type: "application/pdf" });
+  return new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
 }
 
 /**
@@ -86,7 +86,7 @@ export async function createPdfFromImages(imageDataUrls: string[]): Promise<Blob
   }
 
   const pdfBytes = await pdfDoc.save();
-  return new Blob([pdfBytes.buffer], { type: "application/pdf" });
+  return new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
 }
 
 /**
@@ -141,7 +141,7 @@ export async function createPdfFromExcelData(
   }
 
   const pdfBytes = await pdfDoc.save();
-  return new Blob([pdfBytes.buffer], { type: "application/pdf" });
+  return new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
 }
 
 /**
