@@ -83,6 +83,36 @@ async function prepareFetchableImageUrl(
   return { url: signed.signedUrl, cleanupPath: path };
 }
 
+async function authenticateUser(req: Request): Promise<{ userId: string } | Response> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(
+      JSON.stringify({ error: "Authentication required. Please sign in to use AI features." }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data, error } = await supabaseClient.auth.getUser(token);
+  
+  if (error || !data?.user) {
+    console.error("Auth validation failed:", error);
+    return new Response(
+      JSON.stringify({ error: "Invalid or expired authentication token. Please sign in again." }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  return { userId: data.user.id };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -99,6 +129,14 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    // Authenticate user before processing
+    const authResult = await authenticateUser(req);
+    if (authResult instanceof Response) {
+      return authResult;
+    }
+    const { userId } = authResult;
+    console.log("Authenticated user:", userId);
 
     const { image, fromColor, toColor } = await req.json();
 
@@ -193,4 +231,3 @@ serve(async (req) => {
     }
   }
 });
-

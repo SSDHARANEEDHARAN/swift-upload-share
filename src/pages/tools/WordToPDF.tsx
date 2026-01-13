@@ -4,10 +4,10 @@ import { FileDropzone } from "@/components/FileDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
 import { Download, FileText } from "lucide-react";
-import { jsPDF } from "jspdf";
 import mammoth from "mammoth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { createPdfFromText, downloadBlob } from "@/lib/pdf-utils";
 
 const WordToPDF = () => {
   const [user, setUser] = useState<any>(null);
@@ -35,24 +35,9 @@ const WordToPDF = () => {
 
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer });
+      const mammothResult = await mammoth.extractRawText({ arrayBuffer });
       
-      const doc = new jsPDF();
-      const lines = doc.splitTextToSize(result.value, 180);
-      
-      let y = 20;
-      const pageHeight = doc.internal.pageSize.height;
-      
-      for (const line of lines) {
-        if (y > pageHeight - 20) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.text(line, 15, y);
-        y += 7;
-      }
-
-      const blob = doc.output("blob");
+      const blob = await createPdfFromText(mammothResult.value);
       setResult(URL.createObjectURL(blob));
       setStatus("success");
       setStatusMessage("Word document converted to PDF!");
@@ -61,6 +46,15 @@ const WordToPDF = () => {
       setStatus("error");
       setStatusMessage(error.message || "Failed to convert document");
       toast.error("Failed to convert document");
+    }
+  };
+
+  const handleDownload = () => {
+    if (result) {
+      const a = document.createElement("a");
+      a.href = result;
+      a.download = "converted.pdf";
+      a.click();
     }
   };
 
@@ -75,7 +69,7 @@ const WordToPDF = () => {
         )}
         <ProcessingStatus status={status} message={statusMessage} />
         {result && (
-          <Button onClick={() => { const a = document.createElement("a"); a.href = result; a.download = "converted.pdf"; a.click(); }} className="w-full gap-2" variant="outline">
+          <Button onClick={handleDownload} className="w-full gap-2" variant="outline">
             <Download className="w-5 h-5" /> Download PDF
           </Button>
         )}

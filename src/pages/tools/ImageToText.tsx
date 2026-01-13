@@ -10,7 +10,7 @@ import { Copy, FileText, Image, Download, File as FileIcon } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Tesseract from "tesseract.js";
-import { jsPDF } from "jspdf";
+import { createPdfFromText, downloadBlob } from "@/lib/pdf-utils";
 
 const SAMPLE_IMAGE_URL = "https://images.unsplash.com/photo-1586339949216-35c2747cc36d?w=800&q=80";
 
@@ -143,31 +143,18 @@ const ImageToText = () => {
 
   const exportAsTxt = () => {
     const blob = new Blob([extractedText], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "extracted-text.txt";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, "extracted-text.txt");
     toast.success("Downloaded as TXT!");
   };
 
-  const exportAsPdf = () => {
-    const doc = new jsPDF();
-    const lines = doc.splitTextToSize(extractedText, 180);
-    let y = 20;
-    
-    lines.forEach((line: string) => {
-      if (y > 280) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text(line, 15, y);
-      y += 7;
-    });
-
-    doc.save("extracted-text.pdf");
-    toast.success("Downloaded as PDF!");
+  const exportAsPdf = async () => {
+    try {
+      const blob = await createPdfFromText(extractedText);
+      downloadBlob(blob, "extracted-text.pdf");
+      toast.success("Downloaded as PDF!");
+    } catch (error) {
+      toast.error("Failed to create PDF");
+    }
   };
 
   const exportAsDocx = async () => {
@@ -179,12 +166,7 @@ const ImageToText = () => {
       type: "application/msword",
     });
     
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "extracted-text.doc";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, "extracted-text.doc");
     toast.success("Downloaded as DOC!");
   };
 

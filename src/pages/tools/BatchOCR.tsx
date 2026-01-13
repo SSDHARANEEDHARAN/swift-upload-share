@@ -8,7 +8,7 @@ import { Copy, FileText, Upload, X, Download, File as FileIcon } from "lucide-re
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Tesseract from "tesseract.js";
-import { jsPDF } from "jspdf";
+import { createPdfFromText, downloadBlob } from "@/lib/pdf-utils";
 
 const OCR_LANGUAGES = [
   { code: "eng", name: "English" },
@@ -131,31 +131,18 @@ const BatchOCR = () => {
 
   const exportAsTxt = () => {
     const blob = new Blob([combinedText], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "extracted-text.txt";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, "extracted-text.txt");
     toast.success("Downloaded as TXT!");
   };
 
-  const exportAsPdf = () => {
-    const doc = new jsPDF();
-    const lines = doc.splitTextToSize(combinedText, 180);
-    let y = 20;
-    
-    lines.forEach((line: string) => {
-      if (y > 280) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text(line, 15, y);
-      y += 7;
-    });
-
-    doc.save("extracted-text.pdf");
-    toast.success("Downloaded as PDF!");
+  const exportAsPdf = async () => {
+    try {
+      const blob = await createPdfFromText(combinedText);
+      downloadBlob(blob, "extracted-text.pdf");
+      toast.success("Downloaded as PDF!");
+    } catch (error) {
+      toast.error("Failed to create PDF");
+    }
   };
 
   const exportAsDocx = async () => {
@@ -168,12 +155,7 @@ const BatchOCR = () => {
       type: "application/msword",
     });
     
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "extracted-text.doc";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, "extracted-text.doc");
     toast.success("Downloaded as DOC!");
   };
 

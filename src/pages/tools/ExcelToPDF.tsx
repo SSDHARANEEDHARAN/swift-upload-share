@@ -4,10 +4,10 @@ import { FileDropzone } from "@/components/FileDropzone";
 import { ProcessingStatus } from "@/components/ProcessingStatus";
 import { Button } from "@/components/ui/button";
 import { Download, FileSpreadsheet } from "lucide-react";
-import { jsPDF } from "jspdf";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { createPdfFromExcelData, downloadBlob } from "@/lib/pdf-utils";
 
 const ExcelToPDF = () => {
   const [user, setUser] = useState<any>(null);
@@ -37,39 +37,13 @@ const ExcelToPDF = () => {
       const arrayBuffer = await selectedFile.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: "array" });
       
-      const doc = new jsPDF();
-      let pageIndex = 0;
-
-      workbook.SheetNames.forEach((sheetName, sheetIdx) => {
-        if (sheetIdx > 0) doc.addPage();
-        
+      const sheets = workbook.SheetNames.map((sheetName) => {
         const sheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
-        
-        doc.setFontSize(14);
-        doc.text(`Sheet: ${sheetName}`, 15, 15);
-        doc.setFontSize(10);
-        
-        let y = 25;
-        data.forEach((row) => {
-          if (y > doc.internal.pageSize.height - 20) {
-            doc.addPage();
-            y = 20;
-          }
-          const rowText = row.map(cell => String(cell ?? "")).join(" | ");
-          const lines = doc.splitTextToSize(rowText, 180);
-          lines.forEach((line: string) => {
-            if (y > doc.internal.pageSize.height - 20) {
-              doc.addPage();
-              y = 20;
-            }
-            doc.text(line, 15, y);
-            y += 6;
-          });
-        });
+        const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
+        return { name: sheetName, rows: data };
       });
 
-      const blob = doc.output("blob");
+      const blob = await createPdfFromExcelData(sheets);
       setResult(URL.createObjectURL(blob));
       setStatus("success");
       setStatusMessage("Excel converted to PDF!");
@@ -78,6 +52,15 @@ const ExcelToPDF = () => {
       setStatus("error");
       setStatusMessage(error.message || "Failed to convert document");
       toast.error("Failed to convert document");
+    }
+  };
+
+  const handleDownload = () => {
+    if (result) {
+      const a = document.createElement("a");
+      a.href = result;
+      a.download = "converted.pdf";
+      a.click();
     }
   };
 
@@ -92,7 +75,7 @@ const ExcelToPDF = () => {
         )}
         <ProcessingStatus status={status} message={statusMessage} />
         {result && (
-          <Button onClick={() => { const a = document.createElement("a"); a.href = result; a.download = "converted.pdf"; a.click(); }} className="w-full gap-2" variant="outline">
+          <Button onClick={handleDownload} className="w-full gap-2" variant="outline">
             <Download className="w-5 h-5" /> Download PDF
           </Button>
         )}

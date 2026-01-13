@@ -25,9 +25,6 @@ async function prepareFetchableImageUrl(
   supabaseAdmin: any,
   image: string,
 ): Promise<{ url: string; cleanupPath: string | null }> {
-  // Gemini providers often require a publicly fetchable URL (data: URLs are not reliably supported).
-  // We re-host the image to storage and pass a short-lived signed URL to the model.
-
   let bytes: Uint8Array;
   let contentType = "application/octet-stream";
 
@@ -88,6 +85,36 @@ async function prepareFetchableImageUrl(
   return { url: signed.signedUrl, cleanupPath: path };
 }
 
+async function authenticateUser(req: Request, supabaseAdmin: any): Promise<{ userId: string } | Response> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(
+      JSON.stringify({ error: "Authentication required. Please sign in to use AI features." }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data, error } = await supabaseClient.auth.getUser(token);
+  
+  if (error || !data?.user) {
+    console.error("Auth validation failed:", error);
+    return new Response(
+      JSON.stringify({ error: "Invalid or expired authentication token. Please sign in again." }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  return { userId: data.user.id };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -104,6 +131,14 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    // Authenticate user before processing
+    const authResult = await authenticateUser(req, supabaseAdmin);
+    if (authResult instanceof Response) {
+      return authResult;
+    }
+    const { userId } = authResult;
+    console.log("Authenticated user:", userId);
 
     const { image, prompt } = await req.json();
 
@@ -171,7 +206,6 @@ serve(async (req) => {
     console.log("Image edited successfully");
 
     // Extract the generated image from the response
-    // Format: data.choices[0].message.images[0].image_url.url
     const generatedImage = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (!generatedImage) {
@@ -200,4 +234,3 @@ serve(async (req) => {
     }
   }
 });
-
