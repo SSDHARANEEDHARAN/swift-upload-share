@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, User, Upload, History, Menu, X, LayoutDashboard, Shield } from "lucide-react";
+import { LogOut, User, Upload, History, Menu, X, LayoutDashboard, Shield, Crown } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -38,7 +38,7 @@ export const Header = ({ user }: HeaderProps) => {
               <Shield className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-display font-bold text-xl text-foreground group-hover:text-primary transition-colors">
-              SAFE
+              THARANEETHARAN
             </span>
           </Link>
 
@@ -83,6 +83,15 @@ export const Header = ({ user }: HeaderProps) => {
             <ThemeToggle />
             {user ? (
               <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/admin')}
+                  className="gap-2"
+                >
+                  <Crown className="w-4 h-4" />
+                  Admin
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"

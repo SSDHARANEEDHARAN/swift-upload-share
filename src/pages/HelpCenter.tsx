@@ -167,7 +167,7 @@ const HelpCenter = () => {
               Help Center
             </h1>
             <p className="text-muted-foreground mb-8">
-              Find answers, learn how to use our tools, and get the most out of Rise to Live.
+              Find answers, learn how to use our tools, and get the most out of THARANEETHARAN.
             </p>
             <div className="relative max-w-md mx-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />

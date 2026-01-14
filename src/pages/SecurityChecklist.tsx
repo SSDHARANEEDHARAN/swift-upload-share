@@ -394,24 +394,20 @@ const SecurityChecklist = () => {
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" asChild className="gap-2">
                   <a
-                    href="https://docs.lovable.dev/features/security"
-                    target="_blank"
+                    href="/help"
                     rel="noopener noreferrer"
                   >
                     <Shield className="w-4 h-4" />
                     Security Documentation
-                    <ExternalLink className="w-3 h-3" />
                   </a>
                 </Button>
                 <Button variant="outline" asChild className="gap-2">
                   <a
-                    href="https://docs.lovable.dev/features/security#leaked-password-protection-disabled"
-                    target="_blank"
+                    href="/help"
                     rel="noopener noreferrer"
                   >
                     <Key className="w-4 h-4" />
                     Password Protection Guide
-                    <ExternalLink className="w-3 h-3" />
                   </a>
                 </Button>
               </div>
