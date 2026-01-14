@@ -1,4 +1,4 @@
-# SAFE - Secure File Tools
+# THARANEETHARAN - Secure File Tools
 
 Fast, secure, and simple file sharing and transformation tools for everyone.
 
@@ -29,4 +29,4 @@ npm run dev
 
 ## License
 
-© SAFE. All rights reserved.
+© THARANEETHARAN. All rights reserved.

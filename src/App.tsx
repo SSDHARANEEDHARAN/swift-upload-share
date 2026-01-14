@@ -21,6 +21,7 @@ import Privacy from "./pages/Privacy";
 import ApiDocs from "./pages/ApiDocs";
 import RTDesigner from "./pages/RTDesigner";
 import SecurityChecklist from "./pages/SecurityChecklist";
+import AdminDashboard from "./pages/AdminDashboard";
 
 // Image Tools
 import EditImage from "./pages/tools/EditImage";
@@ -350,6 +351,14 @@ const AnimatedRoutes = () => {
           element={
             <AnimatedPage>
               <SecurityChecklist />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AnimatedPage>
+              <AdminDashboard />
             </AnimatedPage>
           }
         />

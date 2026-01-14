@@ -404,6 +404,17 @@ export type Database = {
         }[]
       }
       get_user_room_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_users_with_roles: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -420,6 +431,7 @@ export type Database = {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
+      remove_user_role: { Args: { target_user_id: string }; Returns: boolean }
       search_users_for_chat: {
         Args: { search_term: string }
         Returns: {
@@ -437,6 +449,13 @@ export type Database = {
           id: string
           is_online: boolean
         }[]
+      }
+      set_user_role: {
+        Args: {
+          new_role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
