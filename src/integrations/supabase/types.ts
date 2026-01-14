@@ -59,6 +59,42 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          new_value: Json | null
+          old_value: Json | null
+          target_id: string | null
+          target_type: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          target_id?: string | null
+          target_type: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          target_id?: string | null
+          target_type?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -363,6 +399,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_audit_logs: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          action: string
+          actor_email: string
+          actor_id: string
+          actor_name: string
+          created_at: string
+          id: string
+          metadata: Json
+          new_value: Json
+          old_value: Json
+          target_email: string
+          target_id: string
+          target_name: string
+          target_type: string
+        }[]
+      }
       get_files_by_share_token: {
         Args: { p_share_token: string }
         Returns: {
@@ -430,6 +484,17 @@ export type Database = {
       is_room_participant: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          p_action: string
+          p_metadata?: Json
+          p_new_value?: Json
+          p_old_value?: Json
+          p_target_id?: string
+          p_target_type: string
+        }
+        Returns: string
       }
       remove_user_role: { Args: { target_user_id: string }; Returns: boolean }
       search_users_for_chat: {

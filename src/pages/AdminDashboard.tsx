@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,10 @@ import {
   User,
   RefreshCw,
   Trash2,
+  ClipboardList,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -58,6 +63,22 @@ interface UserWithRole {
   created_at: string | null;
 }
 
+interface AuditLog {
+  id: string;
+  created_at: string;
+  actor_id: string;
+  actor_email: string | null;
+  actor_name: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  target_email: string | null;
+  target_name: string | null;
+  old_value: any;
+  new_value: any;
+  metadata: any;
+}
+
 const AdminDashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -65,6 +86,9 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("users");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -103,6 +127,7 @@ const AdminDashboard = () => {
 
       if (adminCheck === true) {
         await loadUsers();
+        await loadAuditLogs();
       }
       setLoading(false);
     } catch (err) {
@@ -146,11 +171,35 @@ const AdminDashboard = () => {
 
       toast.success(`User role updated to ${newRole}`);
       await loadUsers();
+      await loadAuditLogs();
     } catch (err: any) {
       console.error("Error updating role:", err);
       toast.error(err.message || "Failed to update role");
     } finally {
       setUpdatingUserId(null);
+    }
+  };
+
+  const loadAuditLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("get_audit_logs", {
+        p_limit: 100,
+        p_offset: 0,
+      });
+      
+      if (error) {
+        console.error("Error loading audit logs:", error);
+        toast.error("Failed to load audit logs");
+        return;
+      }
+
+      setAuditLogs(data || []);
+    } catch (err) {
+      console.error("Error loading audit logs:", err);
+      toast.error("Failed to load audit logs");
+    } finally {
+      setLogsLoading(false);
     }
   };
 
@@ -170,6 +219,7 @@ const AdminDashboard = () => {
 
       toast.success("User role removed");
       await loadUsers();
+      await loadAuditLogs();
     } catch (err: any) {
       console.error("Error removing role:", err);
       toast.error(err.message || "Failed to remove role");
@@ -198,6 +248,39 @@ const AdminDashboard = () => {
       default:
         return <Badge variant="secondary">User</Badge>;
     }
+  };
+
+  const getActionBadge = (action: string) => {
+    switch (action) {
+      case "role_change":
+        return <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">Role Changed</Badge>;
+      case "role_removed":
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/30">Role Removed</Badge>;
+      default:
+        return <Badge variant="secondary">{action}</Badge>;
+    }
+  };
+
+  const formatRoleChange = (log: AuditLog) => {
+    const oldRole = log.old_value?.role || "none";
+    const newRole = log.new_value?.role || "none";
+    
+    if (log.action === "role_removed") {
+      return (
+        <span className="text-sm">
+          <span className="text-muted-foreground">Removed role:</span>{" "}
+          <span className="font-medium text-destructive">{oldRole}</span>
+        </span>
+      );
+    }
+    
+    return (
+      <span className="text-sm flex items-center gap-1">
+        <span className="text-muted-foreground">{oldRole}</span>
+        <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+        <span className="font-medium text-primary">{newRole}</span>
+      </span>
+    );
   };
 
   const filteredUsers = users.filter((u) => {
@@ -301,146 +384,238 @@ const AdminDashboard = () => {
             </Card>
           </div>
 
-          {/* User Management */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <CardTitle>User Management</CardTitle>
-                  <CardDescription>Search and manage user roles.</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search users..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 w-64"
-                    />
-                  </div>
-                  <Button variant="outline" size="icon" onClick={loadUsers}>
-                    <RefreshCw className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="py-12 text-center text-muted-foreground">
-                  <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin" />
-                  Loading users...
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Current Role</TableHead>
-                        <TableHead>Joined</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.map((u) => {
-                        const displayName = u.display_name || u.email?.split("@")[0] || "Unknown";
-                        const initials = displayName.slice(0, 2).toUpperCase();
-                        const isCurrentUser = u.id === user?.id;
+          {/* Tabs for User Management and Audit Logs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="users" className="gap-2">
+                <Users className="w-4 h-4" />
+                User Management
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="gap-2">
+                <ClipboardList className="w-4 h-4" />
+                Audit Logs
+              </TabsTrigger>
+            </TabsList>
 
-                        return (
-                          <TableRow key={u.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="w-8 h-8">
-                                  <AvatarImage src={u.avatar_url || undefined} alt={displayName} />
-                                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{displayName}</span>
-                                  {isCurrentUser && (
-                                    <Badge variant="outline" className="text-xs">You</Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{u.email || "-"}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {getRoleIcon(u.role)}
-                                {getRoleBadge(u.role)}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {u.created_at ? new Date(u.created_at).toLocaleDateString() : "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Select
-                                  value={u.role || "user"}
-                                  onValueChange={(value) => handleRoleChange(u.id, value as AppRole)}
-                                  disabled={updatingUserId === u.id || isCurrentUser}
-                                >
-                                  <SelectTrigger className="w-32">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="moderator">Moderator</SelectItem>
-                                    <SelectItem value="user">User</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                
-                                {u.role && !isCurrentUser && (
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-destructive hover:text-destructive"
-                                        disabled={updatingUserId === u.id}
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Remove User Role</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          This will remove all special permissions from {displayName}. They will become a regular user.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={() => handleRemoveRole(u.id)}
-                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                        >
-                                          Remove Role
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                )}
-                              </div>
-                            </TableCell>
+            <TabsContent value="users">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle>User Management</CardTitle>
+                      <CardDescription>Search and manage user roles.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search users..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-9 w-64"
+                        />
+                      </div>
+                      <Button variant="outline" size="icon" onClick={loadUsers}>
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin" />
+                      Loading users...
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Current Role</TableHead>
+                            <TableHead>Joined</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
-                        );
-                      })}
-                      {filteredUsers.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
-                            {searchQuery ? "No users found matching your search." : "No users found."}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredUsers.map((u) => {
+                            const displayName = u.display_name || u.email?.split("@")[0] || "Unknown";
+                            const initials = displayName.slice(0, 2).toUpperCase();
+                            const isCurrentUser = u.id === user?.id;
+
+                            return (
+                              <TableRow key={u.id}>
+                                <TableCell>
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="w-8 h-8">
+                                      <AvatarImage src={u.avatar_url || undefined} alt={displayName} />
+                                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{displayName}</span>
+                                      {isCurrentUser && (
+                                        <Badge variant="outline" className="text-xs">You</Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">{u.email || "-"}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {getRoleIcon(u.role)}
+                                    {getRoleBadge(u.role)}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {u.created_at ? new Date(u.created_at).toLocaleDateString() : "-"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Select
+                                      value={u.role || "user"}
+                                      onValueChange={(value) => handleRoleChange(u.id, value as AppRole)}
+                                      disabled={updatingUserId === u.id || isCurrentUser}
+                                    >
+                                      <SelectTrigger className="w-32">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                        <SelectItem value="moderator">Moderator</SelectItem>
+                                        <SelectItem value="user">User</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    
+                                    {u.role && !isCurrentUser && (
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-destructive hover:text-destructive"
+                                            disabled={updatingUserId === u.id}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Remove User Role</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              This will remove all special permissions from {displayName}. They will become a regular user.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction
+                                              onClick={() => handleRemoveRole(u.id)}
+                                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            >
+                                              Remove Role
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          {filteredUsers.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
+                                {searchQuery ? "No users found matching your search." : "No users found."}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="audit">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <ClipboardList className="w-5 h-5" />
+                        Audit Logs
+                      </CardTitle>
+                      <CardDescription>Track all admin actions for security compliance.</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={loadAuditLogs} className="gap-2">
+                      <RefreshCw className={`w-4 h-4 ${logsLoading ? "animate-spin" : ""}`} />
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {logsLoading ? (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin" />
+                      Loading audit logs...
+                    </div>
+                  ) : auditLogs.length === 0 ? (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <ClipboardList className="w-8 h-8 mx-auto mb-4 opacity-50" />
+                      <p>No audit logs yet.</p>
+                      <p className="text-sm">Admin actions will appear here.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Admin</TableHead>
+                            <TableHead>Action</TableHead>
+                            <TableHead>Target User</TableHead>
+                            <TableHead>Change</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {auditLogs.map((log) => {
+                            const actorName = log.actor_name || log.actor_email?.split("@")[0] || "Unknown";
+                            const targetName = log.target_name || log.target_email?.split("@")[0] || "Unknown";
+
+                            return (
+                              <TableRow key={log.id}>
+                                <TableCell className="text-muted-foreground text-sm">
+                                  {new Date(log.created_at).toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Crown className="w-3 h-3 text-amber-500" />
+                                    <span className="font-medium">{actorName}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {getActionBadge(log.action)}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="font-medium">{targetName}</span>
+                                </TableCell>
+                                <TableCell>
+                                  {formatRoleChange(log)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 
