@@ -12,7 +12,7 @@ export const Footer = () => {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <Shield className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-display font-bold text-lg">THARANEETHARAN</span>
+              <span className="font-display font-bold text-lg">SAFE EYE</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Fast, secure, and simple file sharing for everyone.
@@ -88,7 +88,7 @@ export const Footer = () => {
               rel="noopener noreferrer"
               className="hover:text-foreground transition-colors"
             >
-              Web designed by THARANEETHARAN
+              Web designed by SAFE EYE
             </a>
           </div>
         </div>

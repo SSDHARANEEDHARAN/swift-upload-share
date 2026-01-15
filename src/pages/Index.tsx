@@ -124,7 +124,7 @@ const Index = () => {
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 animate-fade-in-up">
               Explore Tools on{" "}
-              <span className="text-primary">THARANEETHARAN</span>
+              <span className="text-primary">SAFE EYE</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               Discover powerful tools to edit and transform your files. Images, documents, videos—everything you need in one place.
@@ -173,7 +173,7 @@ const Index = () => {
 
         <section className="px-4 sm:px-6 py-20 bg-card/50 border-y border-border">
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-3xl font-display font-bold text-center mb-12">Why Choose THARANEETHARAN?</h2>
+            <h2 className="text-3xl font-display font-bold text-center mb-12">Why Choose SAFE EYE?</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {features.map((feature, index) => (
                 <div key={feature.title} className="text-center animate-fade-in-up" style={{ animationDelay: `${0.1 + index * 0.1}s` }}>

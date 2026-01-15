@@ -1,4 +1,4 @@
-# THARANEETHARAN - Secure File Tools
+# SAFE EYE - Secure File Tools
 
 Fast, secure, and simple file sharing and transformation tools for everyone.
 
@@ -29,4 +29,4 @@ npm run dev
 
 ## License
 
-© THARANEETHARAN. All rights reserved.
+© SAFE EYE. All rights reserved.
