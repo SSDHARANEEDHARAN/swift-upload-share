@@ -14,9 +14,9 @@ const ApiDocs = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 py-12">
-        <h1 className="font-display text-3xl font-bold mb-4">THARANEETHARAN API Documentation</h1>
+        <h1 className="font-display text-3xl font-bold mb-4">SAFE EYE API Documentation</h1>
         <p className="text-muted-foreground mb-8">
-          Integrate THARANEETHARAN secure file sharing capabilities into your applications with our REST API.
+          Integrate SAFE EYE secure file sharing capabilities into your applications with our REST API.
         </p>
 
         <div className="space-y-8">

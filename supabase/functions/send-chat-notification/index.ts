@@ -154,12 +154,12 @@ const handler = async (req: Request): Promise<Response> => {
           <p style="color: #666; font-size: 16px; line-height: 1.5;">
             Log in to your account to accept the invitation and start chatting!
           </p>
-          <a href="${Deno.env.get("SITE_URL") || "https://swift-upload-share.tharaneetharan.app"}" 
+          <a href="${Deno.env.get("SITE_URL") || "https://swift-upload-share.lovable.app"}" 
              style="display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 16px;">
             Open Chat
           </a>
           <p style="color: #999; font-size: 14px; margin-top: 24px;">
-            Best regards,<br>THARANEETHARAN Team
+            Best regards,<br>SAFE EYE Team
           </p>
         </div>
       `;
@@ -179,12 +179,12 @@ const handler = async (req: Request): Promise<Response> => {
               "${messagePreview || 'New message'}"
             </p>
           </div>
-          <a href="${Deno.env.get("SITE_URL") || "https://swift-upload-share.tharaneetharan.app"}" 
+          <a href="${Deno.env.get("SITE_URL") || "https://swift-upload-share.lovable.app"}" 
              style="display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 16px;">
             Reply Now
           </a>
           <p style="color: #999; font-size: 14px; margin-top: 24px;">
-            Best regards,<br>THARANEETHARAN Team
+            Best regards,<br>SAFE EYE Team
           </p>
         </div>
       `;
@@ -202,19 +202,19 @@ const handler = async (req: Request): Promise<Response> => {
           <p style="color: #666; font-size: 16px; line-height: 1.5;">
             Send a message to keep the chat active!
           </p>
-          <a href="${Deno.env.get("SITE_URL") || "https://swift-upload-share.tharaneetharan.app"}" 
+          <a href="${Deno.env.get("SITE_URL") || "https://swift-upload-share.lovable.app"}" 
              style="display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 16px;">
             Open Chat
           </a>
           <p style="color: #999; font-size: 14px; margin-top: 24px;">
-            Best regards,<br>THARANEETHARAN Team
+            Best regards,<br>SAFE EYE Team
           </p>
         </div>
       `;
     }
 
     const emailResponse = await resend.emails.send({
-      from: "THARANEETHARAN <onboarding@resend.dev>",
+      from: "SAFE EYE <onboarding@resend.dev>",
       to: [recipientEmail],
       subject,
       html,
