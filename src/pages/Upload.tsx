@@ -75,22 +75,47 @@ const Upload = () => {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-      if (session?.user) {
-        loadHistory(session.user.id);
+    let isMounted = true;
+    
+    // Set a timeout to ensure we don't hang forever
+    const timeout = setTimeout(() => {
+      if (isMounted && loading) {
+        setLoading(false);
       }
-    });
+    }, 3000);
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (isMounted) {
+          setUser(session?.user ?? null);
+          setLoading(false);
+          if (session?.user) {
+            loadHistory(session.user.id);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Auth session error:", error);
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadHistory(session.user.id);
+      if (isMounted) {
+        setUser(session?.user ?? null);
+        setLoading(false);
+        if (session?.user) {
+          loadHistory(session.user.id);
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [loadHistory]);
 
   const copyLink = (token: string) => {
