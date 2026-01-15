@@ -150,7 +150,15 @@ const Upload = () => {
   }, [user, loadHistory]);
 
   if (loading) {
-    return null;
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header user={null} />
+        <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   return (
