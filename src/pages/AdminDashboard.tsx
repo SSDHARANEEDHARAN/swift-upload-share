@@ -92,24 +92,48 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user) {
+    let isMounted = true;
+    
+    // Set a timeout to prevent hanging on auth check
+    const timeout = setTimeout(() => {
+      if (isMounted && loading) {
         navigate("/auth");
-        return;
       }
-      setUser(session.user);
-      checkAdminAndLoadUsers(session.user.id);
-    });
+    }, 3000);
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (isMounted) {
+          if (!session?.user) {
+            navigate("/auth");
+            return;
+          }
+          setUser(session.user);
+          checkAdminAndLoadUsers(session.user.id);
+        }
+      })
+      .catch((error) => {
+        console.error("Auth session error:", error);
+        if (isMounted) {
+          navigate("/auth");
+        }
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        navigate("/auth");
-        return;
+      if (isMounted) {
+        if (!session?.user) {
+          navigate("/auth");
+          return;
+        }
+        setUser(session.user);
       }
-      setUser(session.user);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const checkAdminAndLoadUsers = async (userId: string) => {
