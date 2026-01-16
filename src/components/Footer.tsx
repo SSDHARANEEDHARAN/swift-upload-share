@@ -88,7 +88,7 @@ export const Footer = () => {
               rel="noopener noreferrer"
               className="hover:text-foreground transition-colors"
             >
-              Web designed by SAFE EYE
+              Web designed by RT
             </a>
           </div>
         </div>
