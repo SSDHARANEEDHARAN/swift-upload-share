@@ -315,6 +315,21 @@ const AdminDashboard = () => {
     );
   });
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header user={null} />
+        <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin text-primary" />
+            <p className="text-muted-foreground">Checking admin access...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   // Access denied view for non-admins
