@@ -224,6 +224,24 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_rate_limits: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
       files: {
         Row: {
           batch_id: string | null
@@ -399,6 +417,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_contact_rate_limit: { Args: { p_email: string }; Returns: boolean }
       get_audit_logs: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
