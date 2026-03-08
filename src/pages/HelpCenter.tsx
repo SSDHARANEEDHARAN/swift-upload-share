@@ -72,7 +72,7 @@ const toolDocs = [
     category: "File Transfer",
     icon: Upload,
     tools: [
-      { name: "Quick Upload", icon: Upload, href: "/upload", description: "Upload files up to 500MB instantly without an account.", howTo: ["Drag & drop files or click to select", "Wait for upload to complete", "Copy share link or QR code", "Share with anyone"] },
+      { name: "Quick Upload", icon: Upload, href: "/upload", description: "Upload files up to 100MB instantly without an account.", howTo: ["Drag & drop files or click to select", "Wait for upload to complete", "Copy share link or QR code", "Share with anyone"] },
     ]
   }
 ];
