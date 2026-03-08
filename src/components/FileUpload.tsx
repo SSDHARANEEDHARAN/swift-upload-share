@@ -433,7 +433,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
                     Drop your files here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Up to 50 files, {user ? '2GB' : '500MB'} total
+                    Up to 50 files, {user ? '2GB' : '100MB'} total
                   </p>
                 </div>
               )}

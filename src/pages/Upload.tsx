@@ -202,7 +202,7 @@ const Upload = () => {
             </p>
             {!user && (
               <p className="text-sm text-muted-foreground mt-2 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
-                No login needed for files up to 500MB
+                No login needed for files up to 100MB
               </p>
             )}
           </div>
