@@ -72,14 +72,14 @@ const toolDocs = [
     category: "File Transfer",
     icon: Upload,
     tools: [
-      { name: "Quick Upload", icon: Upload, href: "/upload", description: "Upload files up to 500MB instantly without an account.", howTo: ["Drag & drop files or click to select", "Wait for upload to complete", "Copy share link or QR code", "Share with anyone"] },
+      { name: "Quick Upload", icon: Upload, href: "/upload", description: "Upload files up to 100MB instantly without an account.", howTo: ["Drag & drop files or click to select", "Wait for upload to complete", "Copy share link or QR code", "Share with anyone"] },
     ]
   }
 ];
 
 const faqs = [
   { q: "What file formats are supported for image editing?", a: "We support JPG, PNG, WebP, and GIF formats. For best results with AI tools, use high-quality JPG or PNG images." },
-  { q: "Is there a file size limit?", a: "For image tools, the limit is 10MB per image. For file transfers, anonymous users can upload up to 500MB, while registered users can upload up to 2GB per batch." },
+  { q: "Is there a file size limit?", a: "For image tools, the limit is 10MB per image. For file transfers, anonymous users can upload up to 100MB, while registered users can upload up to 2GB per batch." },
   { q: "How long are uploaded files stored?", a: "Files are stored for 7 days by default. Registered users can manage their files and extend storage periods." },
   { q: "Are my files secure?", a: "Yes! All uploads are encrypted in transit and at rest. We don't access or share your files, and they're automatically deleted after the retention period." },
   { q: "Do I need an account to use the tools?", a: "Most tools work without an account. However, creating a free account gives you access to upload history, larger file limits, and extended storage." },

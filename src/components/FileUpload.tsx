@@ -45,7 +45,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   const [sentBytes, setSentBytes] = useState(0);
   const [confirmedBytes, setConfirmedBytes] = useState(0);
 
-  const MAX_SIZE_ANONYMOUS = 500 * 1024 * 1024; // 500MB
+  const MAX_SIZE_ANONYMOUS = 100 * 1024 * 1024; // 100MB
   const MAX_SIZE_AUTHENTICATED = 2 * 1024 * 1024 * 1024; // 2GB
   const maxSize = user ? MAX_SIZE_AUTHENTICATED : MAX_SIZE_ANONYMOUS;
 
@@ -85,7 +85,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     // Check file size limits
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > maxSize) {
-      const maxSizeMB = user ? "2GB" : "500MB";
+      const maxSizeMB = user ? "2GB" : "100MB";
       toast.error(`Total file size exceeds ${maxSizeMB} limit. ${user ? '' : 'Login to share up to 2GB!'}`);
       return;
     }
@@ -382,7 +382,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
       {!user && (
         <Alert className="mb-6 border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10 animate-fade-in-up">
           <AlertDescription className="text-sm">
-            Anonymous uploads limited to <span className="font-bold text-primary">500MB</span>. 
+            Anonymous uploads limited to <span className="font-bold text-primary">100MB</span>. 
             <span className="font-semibold text-accent ml-1">Login to share up to 2GB!</span>
           </AlertDescription>
         </Alert>
@@ -433,7 +433,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
                     Drop your files here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Up to 50 files, {user ? '2GB' : '500MB'} total
+                    Up to 50 files, {user ? '2GB' : '100MB'} total
                   </p>
                 </div>
               )}
