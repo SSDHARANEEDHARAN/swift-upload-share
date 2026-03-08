@@ -98,19 +98,20 @@ const SharedNotes = () => {
 
   // Auto-save with debounce
   const saveNote = useCallback(async (title: string, content: string) => {
-    if (!note?.id) return;
+    if (!note?.share_token) return;
 
     setIsSaving(true);
-    const { error } = await supabase
-      .from("shared_notes")
-      .update({ title, content })
-      .eq("id", note.id);
+    const { error } = await supabase.rpc("update_shared_note", {
+      p_share_token: note.share_token,
+      p_title: title,
+      p_content: content,
+    });
 
     if (error) {
       toast.error("Failed to save");
     }
     setIsSaving(false);
-  }, [note?.id]);
+  }, [note?.share_token]);
 
   const handleTitleChange = (newTitle: string) => {
     if (!note) return;
