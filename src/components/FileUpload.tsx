@@ -45,7 +45,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   const [sentBytes, setSentBytes] = useState(0);
   const [confirmedBytes, setConfirmedBytes] = useState(0);
 
-  const MAX_SIZE_ANONYMOUS = 500 * 1024 * 1024; // 500MB
+  const MAX_SIZE_ANONYMOUS = 100 * 1024 * 1024; // 100MB
   const MAX_SIZE_AUTHENTICATED = 2 * 1024 * 1024 * 1024; // 2GB
   const maxSize = user ? MAX_SIZE_AUTHENTICATED : MAX_SIZE_ANONYMOUS;
 
