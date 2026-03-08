@@ -85,7 +85,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     // Check file size limits
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > maxSize) {
-      const maxSizeMB = user ? "2GB" : "500MB";
+      const maxSizeMB = user ? "2GB" : "100MB";
       toast.error(`Total file size exceeds ${maxSizeMB} limit. ${user ? '' : 'Login to share up to 2GB!'}`);
       return;
     }
