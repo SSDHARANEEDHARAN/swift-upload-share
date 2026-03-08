@@ -382,7 +382,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
       {!user && (
         <Alert className="mb-6 border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10 animate-fade-in-up">
           <AlertDescription className="text-sm">
-            Anonymous uploads limited to <span className="font-bold text-primary">500MB</span>. 
+            Anonymous uploads limited to <span className="font-bold text-primary">100MB</span>. 
             <span className="font-semibold text-accent ml-1">Login to share up to 2GB!</span>
           </AlertDescription>
         </Alert>
