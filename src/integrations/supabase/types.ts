@@ -521,6 +521,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_shared_note: {
+        Args: { p_content: string; p_share_token: string; p_title: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
