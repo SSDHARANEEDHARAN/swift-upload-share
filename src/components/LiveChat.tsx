@@ -463,16 +463,11 @@ export const LiveChat = ({ user }: LiveChatProps) => {
       if (error) throw error;
 
       // Send email notification
-      if (profile.email) {
-        sendInviteNotification(
-          profile.email,
-          profile.display_name || profile.email
-        );
-      }
+      sendInviteNotification(profile.id);
 
       toast({
         title: "Invitation Sent",
-        description: `Invitation sent to ${profile.display_name || profile.email}. Waiting for them to accept.`,
+        description: `Invitation sent to ${profile.display_name || "user"}. Waiting for them to accept.`,
       });
       setShowAddUser(false);
     } catch (error: any) {
