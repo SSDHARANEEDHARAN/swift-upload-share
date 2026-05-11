@@ -189,16 +189,14 @@ export const LiveChat = ({ user }: LiveChatProps) => {
         .eq("room_id", currentRoom.id);
 
       if (parts) {
-        // Fetch avatar URLs for all participants
+        // Use SECURITY DEFINER RPC to fetch other users' public profile info (no email)
         const userIds = parts.map(p => p.user_id);
         const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, avatar_url")
-          .in("id", userIds);
-        
+          .rpc("get_profile_public_info", { user_ids: userIds });
+
         const participantsWithAvatars = parts.map(p => ({
           ...p,
-          avatar_url: profiles?.find(pr => pr.id === p.user_id)?.avatar_url || undefined,
+          avatar_url: profiles?.find((pr: any) => pr.id === p.user_id)?.avatar_url || undefined,
         }));
         setParticipants(participantsWithAvatars);
       }
