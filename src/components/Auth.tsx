@@ -541,7 +541,7 @@ export const Auth = () => {
 
               <div className="mt-6 pt-6 border-t border-border text-center">
                 <p className="text-xs text-muted-foreground">
-                  Anonymous users can share up to 100MB
+                  Anonymous users can share up to 1GB
                 </p>
                 <Link to="/upload" className="text-xs text-primary hover:underline mt-1 inline-block">
                   Skip and upload without an account →

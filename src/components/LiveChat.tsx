@@ -189,16 +189,14 @@ export const LiveChat = ({ user }: LiveChatProps) => {
         .eq("room_id", currentRoom.id);
 
       if (parts) {
-        // Fetch avatar URLs for all participants
+        // Use SECURITY DEFINER RPC to fetch other users' public profile info (no email)
         const userIds = parts.map(p => p.user_id);
         const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, avatar_url")
-          .in("id", userIds);
-        
+          .rpc("get_profile_public_info", { user_ids: userIds });
+
         const participantsWithAvatars = parts.map(p => ({
           ...p,
-          avatar_url: profiles?.find(pr => pr.id === p.user_id)?.avatar_url || undefined,
+          avatar_url: profiles?.find((pr: any) => pr.id === p.user_id)?.avatar_url || undefined,
         }));
         setParticipants(participantsWithAvatars);
       }
@@ -397,13 +395,12 @@ export const LiveChat = ({ user }: LiveChatProps) => {
     setLoading(false);
   };
 
-  const sendInviteNotification = async (recipientEmail: string, recipientName: string) => {
+  const sendInviteNotification = async (recipientUserId: string) => {
     try {
       await supabase.functions.invoke("send-chat-notification", {
         body: {
           type: "invitation",
-          recipientEmail,
-          recipientName,
+          recipientUserId,
           inviterName: myUsername,
           roomName: currentRoom?.name,
           roomId: currentRoom?.id,
@@ -464,16 +461,11 @@ export const LiveChat = ({ user }: LiveChatProps) => {
       if (error) throw error;
 
       // Send email notification
-      if (profile.email) {
-        sendInviteNotification(
-          profile.email,
-          profile.display_name || profile.email
-        );
-      }
+      sendInviteNotification(profile.id);
 
       toast({
         title: "Invitation Sent",
-        description: `Invitation sent to ${profile.display_name || profile.email}. Waiting for them to accept.`,
+        description: `Invitation sent to ${profile.display_name || "user"}. Waiting for them to accept.`,
       });
       setShowAddUser(false);
     } catch (error: any) {
@@ -564,28 +556,18 @@ export const LiveChat = ({ user }: LiveChatProps) => {
       const otherParticipants = participants.filter(
         p => p.user_id !== user?.id && p.is_accepted
       );
-      
+
       for (const participant of otherParticipants) {
-        // Fetch their email from profiles
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email, display_name")
-          .eq("id", participant.user_id)
-          .maybeSingle();
-        
-        if (profile?.email) {
-          await supabase.functions.invoke("send-chat-notification", {
-            body: {
-              type: "new_message",
-              recipientEmail: profile.email,
-              recipientName: profile.display_name || profile.email,
-              senderName: myUsername,
-              roomName: currentRoom.name,
-              roomId: currentRoom.id,
-              messagePreview: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
-            },
-          });
-        }
+        await supabase.functions.invoke("send-chat-notification", {
+          body: {
+            type: "new_message",
+            recipientUserId: participant.user_id,
+            senderName: myUsername,
+            roomName: currentRoom.name,
+            roomId: currentRoom.id,
+            messagePreview: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
+          },
+        });
       }
     } catch (error) {
       console.error("Failed to send message notification:", error);
