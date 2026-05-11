@@ -12,8 +12,7 @@ const corsHeaders = {
 
 interface ChatNotificationRequest {
   type: "invitation" | "expiring" | "new_message";
-  recipientEmail: string;
-  recipientName: string;
+  recipientUserId: string;
   inviterName?: string;
   senderName?: string;
   roomName?: string;
@@ -39,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    
+
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false },
       global: { headers: { Authorization: authHeader } }
@@ -55,34 +54,29 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { 
-      type, 
-      recipientEmail, 
-      recipientName, 
-      inviterName, 
-      senderName, 
-      roomName, 
+    const {
+      type,
+      recipientUserId,
+      inviterName,
+      senderName,
+      roomName,
       roomId,
-      expiresIn, 
-      messagePreview 
+      expiresIn,
+      messagePreview
     }: ChatNotificationRequest = await req.json();
 
-    // Validate required fields
-    if (!type || !recipientEmail || !recipientName) {
+    if (!type || !recipientUserId) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: type, recipientEmail, recipientName" }),
+        JSON.stringify({ error: "Missing required fields: type, recipientUserId" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(recipientEmail)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid email format" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
+    const supabaseServiceClient = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { persistSession: false } }
+    );
 
     // Verify sender permissions based on notification type
     if (type === "invitation" || type === "new_message") {
@@ -92,13 +86,6 @@ const handler = async (req: Request): Promise<Response> => {
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
-
-      // Use service role to verify sender is a participant of the room
-      const supabaseServiceClient = createClient(
-        supabaseUrl,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-        { auth: { persistSession: false } }
-      );
 
       const { data: participant, error: participantError } = await supabaseServiceClient
         .from("chat_participants")
@@ -115,26 +102,29 @@ const handler = async (req: Request): Promise<Response> => {
           { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
-
-      // Verify recipient is in the profiles table (exists in system)
-      const { data: recipientProfile, error: recipientError } = await supabaseServiceClient
-        .from("profiles")
-        .select("id")
-        .eq("email", recipientEmail)
-        .maybeSingle();
-
-      if (recipientError) {
-        console.error("Recipient lookup error:", recipientError);
-      }
-
-      // Allow notification only if recipient exists in system
-      if (!recipientProfile) {
-        return new Response(
-          JSON.stringify({ error: "Recipient is not a registered user" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
     }
+
+    // Look up recipient email server-side from auth.users (never exposed to client)
+    const { data: recipientAuth, error: recipientAuthError } =
+      await supabaseServiceClient.auth.admin.getUserById(recipientUserId);
+
+    if (recipientAuthError || !recipientAuth?.user?.email) {
+      return new Response(
+        JSON.stringify({ error: "Recipient not found" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const recipientEmail = recipientAuth.user.email;
+
+    // Look up display name from profiles (no email leakage)
+    const { data: recipientProfile } = await supabaseServiceClient
+      .from("profiles")
+      .select("display_name")
+      .eq("id", recipientUserId)
+      .maybeSingle();
+
+    const recipientName = recipientProfile?.display_name || recipientEmail.split("@")[0];
 
     // Build email content based on type
     let subject: string;
