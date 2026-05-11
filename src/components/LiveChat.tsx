@@ -558,28 +558,18 @@ export const LiveChat = ({ user }: LiveChatProps) => {
       const otherParticipants = participants.filter(
         p => p.user_id !== user?.id && p.is_accepted
       );
-      
+
       for (const participant of otherParticipants) {
-        // Fetch their email from profiles
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email, display_name")
-          .eq("id", participant.user_id)
-          .maybeSingle();
-        
-        if (profile?.email) {
-          await supabase.functions.invoke("send-chat-notification", {
-            body: {
-              type: "new_message",
-              recipientEmail: profile.email,
-              recipientName: profile.display_name || profile.email,
-              senderName: myUsername,
-              roomName: currentRoom.name,
-              roomId: currentRoom.id,
-              messagePreview: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
-            },
-          });
-        }
+        await supabase.functions.invoke("send-chat-notification", {
+          body: {
+            type: "new_message",
+            recipientUserId: participant.user_id,
+            senderName: myUsername,
+            roomName: currentRoom.name,
+            roomId: currentRoom.id,
+            messagePreview: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
+          },
+        });
       }
     } catch (error) {
       console.error("Failed to send message notification:", error);
