@@ -397,13 +397,12 @@ export const LiveChat = ({ user }: LiveChatProps) => {
     setLoading(false);
   };
 
-  const sendInviteNotification = async (recipientEmail: string, recipientName: string) => {
+  const sendInviteNotification = async (recipientUserId: string) => {
     try {
       await supabase.functions.invoke("send-chat-notification", {
         body: {
           type: "invitation",
-          recipientEmail,
-          recipientName,
+          recipientUserId,
           inviterName: myUsername,
           roomName: currentRoom?.name,
           roomId: currentRoom?.id,
