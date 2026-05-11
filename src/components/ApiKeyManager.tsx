@@ -79,8 +79,18 @@ export const ApiKeyManager = () => {
   const generateApiKey = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let key = 'rtl_';
-    for (let i = 0; i < 32; i++) {
-      key += chars.charAt(Math.floor(Math.random() * chars.length));
+    // Use CSPRNG with rejection sampling to avoid modulo bias
+    const max = 256 - (256 % chars.length);
+    const buf = new Uint8Array(64);
+    let count = 0;
+    while (count < 32) {
+      crypto.getRandomValues(buf);
+      for (let i = 0; i < buf.length && count < 32; i++) {
+        if (buf[i] < max) {
+          key += chars.charAt(buf[i] % chars.length);
+          count++;
+        }
+      }
     }
     return key;
   };
