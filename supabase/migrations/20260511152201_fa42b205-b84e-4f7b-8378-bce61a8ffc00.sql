@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anyone can delete shared notes" ON public.shared_notes;
