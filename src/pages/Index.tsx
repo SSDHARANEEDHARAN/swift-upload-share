@@ -69,11 +69,10 @@ const features = [
   { icon: Clock, title: "No Expiry Hassle", description: "Files stay available for download without time pressure." }
 ];
 
-type FilterType = "all" | "image" | "pdf" | "upload";
+type FilterType = "upload";
 
 const Index = () => {
   const [user, setUser] = useState<any>(null);
-  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const liveChatRef = useRef<{ open: () => void }>(null);
 
   // Track user presence for online status
@@ -92,28 +91,9 @@ const Index = () => {
   }, []);
 
   const handleOpenChat = () => {
-    // Trigger live chat to open
     const chatButton = document.querySelector('[data-chat-toggle]') as HTMLButtonElement;
     chatButton?.click();
   };
-
-  const filters: { id: FilterType; label: string }[] = [
-    { id: "all", label: "All Tools" },
-    { id: "image", label: "Image Tools" },
-    { id: "pdf", label: "Document Tools" },
-    { id: "upload", label: "Upload Tools" }
-  ];
-
-  const getFilteredTools = () => {
-    switch (activeFilter) {
-      case "image": return imageTools;
-      case "pdf": return pdfTools;
-      case "upload": return uploadTools;
-      default: return [...imageTools, ...pdfTools, ...uploadTools];
-    }
-  };
-
-  const filteredTools = getFilteredTools();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -123,37 +103,19 @@ const Index = () => {
         <section className="pt-32 pb-16 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 animate-fade-in-up">
-              Explore Tools on{" "}
+              File Transfer on{" "}
               <span className="text-primary">SAFE EYE</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-              Discover powerful tools to edit and transform your files. Images, documents, videos—everything you need in one place.
+              Fast, secure file transfer. Upload, share via link, and send large files with ease.
             </p>
-          </div>
-        </section>
-
-        <section className="px-4 sm:px-6 pb-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-wrap gap-2 justify-center">
-              {filters.map((filter) => (
-                <Button
-                  key={filter.id}
-                  variant={activeFilter === filter.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveFilter(filter.id)}
-                  className={activeFilter === filter.id ? "" : "bg-card hover:bg-secondary"}
-                >
-                  {filter.label}
-                </Button>
-              ))}
-            </div>
           </div>
         </section>
 
         <section className="px-4 sm:px-6 pb-20">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredTools.map((tool, index) => (
+              {uploadTools.map((tool, index) => (
                 <div key={tool.title} className="animate-fade-in-up" style={{ animationDelay: `${0.05 + index * 0.03}s` }}>
                   <ToolCard {...tool} />
                 </div>
