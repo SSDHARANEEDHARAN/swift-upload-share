@@ -14,20 +14,6 @@ import {
 } from "@/components/ui/accordion";
 import {
   Search,
-  Wand2,
-  ZoomIn,
-  Palette,
-  Eraser,
-  PenTool,
-  Box,
-  Video,
-  FileText,
-  Minimize2,
-  Lock,
-  FileSpreadsheet,
-  Presentation,
-  Archive,
-  Image,
   Upload,
   HelpCircle,
   Mail,
@@ -39,53 +25,21 @@ import { toast } from "sonner";
 
 const toolDocs = [
   {
-    category: "Image Tools",
-    icon: Image,
-    tools: [
-      { name: "Edit Image with AI", icon: Wand2, href: "/tools/edit-image", description: "Upload any image and describe the changes you want. Our AI will modify the image based on your prompt.", howTo: ["Upload an image (JPG, PNG, WebP)", "Enter a description of changes you want", "Click 'Edit Image' and wait for processing", "Download your edited image"] },
-      { name: "Upscale Image", icon: ZoomIn, href: "/tools/upscale-image", description: "Increase image resolution up to 4x without losing quality using AI enhancement.", howTo: ["Upload an image", "Select upscale factor (2x or 4x)", "Click 'Upscale' to process", "Download your high-resolution image"] },
-      { name: "Recolor Image", icon: Palette, href: "/tools/recolor-image", description: "Change colors of specific objects in your image using AI.", howTo: ["Upload your image", "Describe what object to recolor and the new color", "Click 'Recolor' to process", "Download your recolored image"] },
-      { name: "Remove Background", icon: Eraser, href: "/tools/remove-background", description: "Automatically remove backgrounds from images with AI precision.", howTo: ["Upload an image with a clear subject", "Click 'Remove Background'", "AI will detect and remove the background", "Download image with transparent background"] },
-      { name: "Vectorize Image", icon: PenTool, href: "/tools/vectorize-image", description: "Convert raster images to scalable vector format (SVG).", howTo: ["Upload a PNG, JPG, or other raster image", "Adjust settings if needed", "Click 'Vectorize'", "Download SVG file"] },
-      { name: "Image to 3D", icon: Box, href: "/tools/image-to-3d", description: "Generate 3D models from 2D images for rendering or 3D printing.", howTo: ["Upload a clear image of an object", "Click 'Generate 3D Model'", "Wait for AI processing", "Download 3D model file"] },
-      { name: "Image to Video", icon: Video, href: "/tools/image-to-video", description: "Transform static images into animated videos with AI.", howTo: ["Upload an image", "Optionally describe the animation", "Click 'Generate Video'", "Download your animated video"] },
-    ]
-  },
-  {
-    category: "Document Tools",
-    icon: FileText,
-    tools: [
-      { name: "Compress PDF", icon: Minimize2, href: "/tools/compress-pdf", description: "Reduce PDF file size while maintaining quality.", howTo: ["Upload your PDF file", "Click 'Compress PDF'", "Download the smaller file"] },
-      { name: "Images to PDF", icon: Image, href: "/tools/images-to-pdf", description: "Combine multiple images into a single PDF document.", howTo: ["Upload multiple images", "Arrange order if needed", "Click 'Create PDF'", "Download combined PDF"] },
-      { name: "Password Protect PDF", icon: Lock, href: "/tools/password-protect-pdf", description: "Add password encryption to protect sensitive PDFs.", howTo: ["Upload your PDF", "Enter desired password", "Click 'Protect PDF'", "Download encrypted file"] },
-      { name: "Set PDF Permissions", icon: Lock, href: "/tools/set-pdf-permissions", description: "Control who can print, copy, edit, or annotate your PDFs.", howTo: ["Upload your PDF", "Set owner password (required)", "Toggle permission flags for printing, copying, editing, annotating", "Optionally set user password to require opening", "Click 'Apply Permissions'", "Download protected PDF"] },
-      { name: "Word to PDF", icon: FileText, href: "/tools/word-to-pdf", description: "Convert DOC/DOCX files to PDF format.", howTo: ["Upload Word document", "Click 'Convert to PDF'", "Download PDF file"] },
-      { name: "Excel to PDF", icon: FileSpreadsheet, href: "/tools/excel-to-pdf", description: "Convert Excel spreadsheets to PDF.", howTo: ["Upload XLS/XLSX file", "Click 'Convert to PDF'", "Download PDF file"] },
-      { name: "PowerPoint to PDF", icon: Presentation, href: "/tools/ppt-to-pdf", description: "Convert PPT presentations to PDF.", howTo: ["Upload PowerPoint file", "Click 'Convert to PDF'", "Download PDF file"] },
-      { name: "PDF to Word", icon: FileText, href: "/tools/pdf-to-word", description: "Convert PDF to editable Word documents.", howTo: ["Upload PDF file", "Click 'Convert to Word'", "Download DOC file"] },
-      { name: "PDF to Excel", icon: FileSpreadsheet, href: "/tools/pdf-to-excel", description: "Extract tables from PDF to Excel format.", howTo: ["Upload PDF with tables", "Click 'Convert to Excel'", "Download spreadsheet"] },
-      { name: "PDF to PowerPoint", icon: Presentation, href: "/tools/pdf-to-ppt", description: "Convert PDF slides to PowerPoint.", howTo: ["Upload PDF file", "Click 'Convert to PPT'", "Download presentation"] },
-      { name: "PDF to PDF/A", icon: Archive, href: "/tools/pdf-to-pdfa", description: "Convert to archival PDF format for long-term preservation.", howTo: ["Upload PDF file", "Click 'Convert to PDF/A'", "Download archival PDF"] },
-    ]
-  },
-  {
     category: "File Transfer",
     icon: Upload,
     tools: [
       { name: "Quick Upload", icon: Upload, href: "/upload", description: "Upload files up to 1GB instantly without an account.", howTo: ["Drag & drop files or click to select", "Wait for upload to complete", "Copy share link or QR code", "Share with anyone"] },
+      { name: "Large File Transfer", icon: Upload, href: "/upload", description: "Sign in to upload files up to 2GB per batch.", howTo: ["Sign in to your account", "Drag & drop files (up to 2GB per batch)", "Wait for upload to complete", "Copy share link to send to others"] },
     ]
   }
 ];
 
 const faqs = [
-  { q: "What file formats are supported for image editing?", a: "We support JPG, PNG, WebP, and GIF formats. For best results with AI tools, use high-quality JPG or PNG images." },
-  { q: "Is there a file size limit?", a: "For image tools, the limit is 10MB per image. For file transfers, anonymous users can upload up to 1GB, while registered users can upload up to 2GB per batch." },
+  { q: "Is there a file size limit?", a: "Anonymous users can upload up to 1GB. Registered users can upload up to 2GB per batch." },
   { q: "How long are uploaded files stored?", a: "Files are stored for 7 days by default. Registered users can manage their files and extend storage periods." },
   { q: "Are my files secure?", a: "Yes! All uploads are encrypted in transit and at rest. We don't access or share your files, and they're automatically deleted after the retention period." },
-  { q: "Do I need an account to use the tools?", a: "Most tools work without an account. However, creating a free account gives you access to upload history, larger file limits, and extended storage." },
-  { q: "What AI models power the image tools?", a: "Our image tools use state-of-the-art AI models including OpenAI's GPT-Image for editing, generation, and enhancement tasks." },
-  { q: "Can I use the tools on mobile?", a: "Absolutely! All tools are fully responsive and work great on mobile devices, tablets, and desktops." },
-  { q: "What happens if a tool doesn't work as expected?", a: "AI tools may sometimes produce unexpected results. Try adjusting your prompt or using a different image. For technical issues, contact our support team." },
+  { q: "Do I need an account to upload?", a: "No. Anonymous uploads work instantly. Creating a free account unlocks upload history, larger file limits, and extended storage." },
+  { q: "Can I use SAFE EYE on mobile?", a: "Absolutely! The site is fully responsive and works great on mobile devices, tablets, and desktops." },
 ];
 
 const HelpCenter = () => {

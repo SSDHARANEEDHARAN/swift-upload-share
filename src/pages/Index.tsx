@@ -8,54 +8,7 @@ import { RecentChatsPreview } from "@/components/RecentChatsPreview";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { usePresence } from "@/hooks/usePresence";
-import {
-  Upload,
-  Shield,
-  Zap,
-  FileUp,
-  Link2,
-  Clock,
-  Image,
-  Wand2,
-  ZoomIn,
-  Palette,
-  Eraser,
-  PenTool,
-  Box,
-  Video,
-  FileText,
-  Minimize2,
-  Lock,
-  FileSpreadsheet,
-  Presentation,
-  Archive,
-  Type,
-} from "lucide-react";
-
-const imageTools = [
-  { title: "Edit Image with AI", description: "Upload an image & enter a prompt to modify & enhance any photo with AI.", icon: Wand2, href: "/tools/edit-image", badge: "AI" },
-  { title: "Upscale Image with AI", description: "Upscale your images up to 4x their original size with AI.", icon: ZoomIn, href: "/tools/upscale-image", badge: "AI" },
-  { title: "Recolor Image with AI", description: "Replace the color of any object in your image using AI.", icon: Palette, href: "/tools/recolor-image", badge: "AI" },
-  { title: "Remove Image Background", description: "Remove image backgrounds instantly with our free AI tool.", icon: Eraser, href: "/tools/remove-background", badge: "AI" },
-  { title: "Image to Text (OCR)", description: "Extract text from images using optical character recognition.", icon: Type, href: "/tools/image-to-text" },
-  { title: "Vectorize Image", description: "Turn your images into SVG vector files—right in your browser.", icon: PenTool, href: "/tools/vectorize-image" },
-  { title: "Convert Image to 3D", description: "Generate a 3D model from any image for 3D rendering or printing.", icon: Box, href: "/tools/image-to-3d", badge: "AI" },
-  { title: "Image to Video AI", description: "Turn static images into captivating videos with AI.", icon: Video, href: "/tools/image-to-video", badge: "AI" },
-];
-
-const pdfTools = [
-  { title: "Compress PDF", description: "Instantly compress your PDF files to reduce their size.", icon: Minimize2, href: "/tools/compress-pdf" },
-  { title: "Convert Images to PDF", description: "Convert PNG, JPG, and other image files to PDF quickly.", icon: Image, href: "/tools/images-to-pdf" },
-  { title: "Password Protect PDF", description: "Encrypt your PDF with a password to protect sensitive content.", icon: Lock, href: "/tools/password-protect-pdf" },
-  { title: "Set PDF Permissions", description: "Control printing, copying, and editing permissions on your PDFs.", icon: Shield, href: "/tools/set-pdf-permissions" },
-  { title: "Convert Word to PDF", description: "Convert DOC or DOCX files to PDF format seamlessly.", icon: FileText, href: "/tools/word-to-pdf" },
-  { title: "Convert Excel to PDF", description: "Convert XLS, XLSX files to PDF—tables preserved.", icon: FileSpreadsheet, href: "/tools/excel-to-pdf" },
-  { title: "Convert PowerPoint to PDF", description: "Convert PPT presentations to PDF—online and free.", icon: Presentation, href: "/tools/ppt-to-pdf" },
-  { title: "Convert PDF to Word", description: "Transform PDFs into editable Word documents.", icon: FileText, href: "/tools/pdf-to-word" },
-  { title: "Convert PDF to Excel", description: "Turn PDFs into editable Excel spreadsheets.", icon: FileSpreadsheet, href: "/tools/pdf-to-excel" },
-  { title: "Convert PDF to PowerPoint", description: "Turn PDFs into fully editable PowerPoint slides.", icon: Presentation, href: "/tools/pdf-to-ppt" },
-  { title: "Convert PDF to PDF/A", description: "Convert PDF to PDF/A for long-term preservation.", icon: Archive, href: "/tools/pdf-to-pdfa" },
-];
+import { Upload, Shield, Zap, FileUp, Link2, Clock } from "lucide-react";
 
 const uploadTools = [
   { title: "Quick File Upload", description: "Upload files up to 500MB instantly without creating an account.", icon: FileUp, href: "/upload", badge: "Free" },
@@ -66,27 +19,22 @@ const uploadTools = [
 const features = [
   { icon: Shield, title: "Secure & Private", description: "End-to-end encryption and auto-expiring links keep your files safe." },
   { icon: Zap, title: "Lightning Fast", description: "Optimized infrastructure for rapid uploads and downloads." },
-  { icon: Clock, title: "No Expiry Hassle", description: "Files stay available for download without time pressure." }
+  { icon: Clock, title: "No Expiry Hassle", description: "Files stay available for download without time pressure." },
 ];
-
-type FilterType = "upload";
 
 const Index = () => {
   const [user, setUser] = useState<any>(null);
   const liveChatRef = useRef<{ open: () => void }>(null);
 
-  // Track user presence for online status
   usePresence(user);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -98,13 +46,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header user={user} />
-      
+
       <main className="flex-1">
         <section className="pt-32 pb-16 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 animate-fade-in-up">
-              File Transfer on{" "}
-              <span className="text-primary">SAFE EYE</span>
+              File Transfer on <span className="text-primary">SAFE EYE</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               Fast, secure file transfer. Upload, share via link, and send large files with ease.
@@ -124,7 +71,6 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Recent Chats Preview for logged-in users */}
         {user && (
           <section className="px-4 sm:px-6 pb-8">
             <div className="max-w-md mx-auto">
@@ -152,8 +98,8 @@ const Index = () => {
 
         <section className="px-4 sm:px-6 py-20">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl sm:text-4xl font-display font-bold mb-4">Ready to Transform Your Files?</h2>
-            <p className="text-muted-foreground mb-8">Start using our powerful tools instantly. No signup required for most features.</p>
+            <h2 className="text-3xl sm:text-4xl font-display font-bold mb-4">Ready to Share Your Files?</h2>
+            <p className="text-muted-foreground mb-8">Start uploading instantly. No signup required.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild>
                 <Link to="/upload" className="gap-2"><Upload className="w-5 h-5" />Start Uploading</Link>
