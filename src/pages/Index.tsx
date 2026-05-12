@@ -69,7 +69,7 @@ const features = [
   { icon: Clock, title: "No Expiry Hassle", description: "Files stay available for download without time pressure." }
 ];
 
-type FilterType = "all" | "image" | "pdf" | "upload";
+type FilterType = "upload";
 
 const Index = () => {
   const [user, setUser] = useState<any>(null);
