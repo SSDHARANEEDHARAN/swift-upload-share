@@ -1,14 +1,59 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { Calendar, FileText, Share2, ChevronDown, ChevronUp, File, Trash2 } from "lucide-react";
+import { Calendar, FileText, Share2, ChevronDown, ChevronUp, File, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { copyToClipboard } from "@/lib/clipboard";
+
+type FileTypeFilter = "all" | "image" | "video" | "audio" | "pdf" | "document" | "archive" | "other";
+
+const matchesFilter = (mime: string | null | undefined, filename: string, filter: FileTypeFilter) => {
+  if (filter === "all") return true;
+  const m = (mime || "").toLowerCase();
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  switch (filter) {
+    case "image":
+      return m.startsWith("image/") || ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "heic"].includes(ext);
+    case "video":
+      return m.startsWith("video/") || ["mp4", "mov", "webm", "mkv", "avi"].includes(ext);
+    case "audio":
+      return m.startsWith("audio/") || ["mp3", "wav", "ogg", "m4a", "flac"].includes(ext);
+    case "pdf":
+      return m === "application/pdf" || ext === "pdf";
+    case "document":
+      return (
+        m.includes("word") ||
+        m.includes("excel") ||
+        m.includes("spreadsheet") ||
+        m.includes("presentation") ||
+        m === "text/plain" ||
+        ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "rtf", "csv"].includes(ext)
+      );
+    case "archive":
+      return ["zip", "rar", "7z", "tar", "gz"].includes(ext) || m.includes("zip") || m.includes("compressed");
+    case "other":
+      return !matchesFilter(mime, filename, "image") &&
+        !matchesFilter(mime, filename, "video") &&
+        !matchesFilter(mime, filename, "audio") &&
+        !matchesFilter(mime, filename, "pdf") &&
+        !matchesFilter(mime, filename, "document") &&
+        !matchesFilter(mime, filename, "archive");
+  }
+};
 
 interface FileInfo {
   id: string;
@@ -32,6 +77,8 @@ const History = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<FileTypeFilter>("all");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -91,10 +138,11 @@ const History = () => {
     }
   };
 
-  const copyLink = (token: string) => {
+  const copyLink = async (token: string) => {
     const link = `${window.location.origin}/download/${token}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Link copied to clipboard!");
+    const ok = await copyToClipboard(link);
+    if (ok) toast.success("Link copied to clipboard!");
+    else toast.error("Couldn't copy automatically. Long-press the link to copy.");
   };
 
   const deleteBatch = async (batchId: string) => {
@@ -194,20 +242,76 @@ const History = () => {
             </p>
           </div>
 
-          {batches.length === 0 ? (
-            <Card className="p-12 text-center">
-              <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">No uploads yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Start uploading files to see your history here
-              </p>
-              <Button onClick={() => navigate('/upload')}>Upload Files</Button>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {batches.map((batch) => {
-                const isExpanded = expandedBatches.has(batch.batch_id);
-                return (
+          {batches.length > 0 && (
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by filename..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                  aria-label="Search uploads"
+                />
+              </div>
+              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as FileTypeFilter)}>
+                <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filter by file type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All file types</SelectItem>
+                  <SelectItem value="image">Images</SelectItem>
+                  <SelectItem value="video">Videos</SelectItem>
+                  <SelectItem value="audio">Audio</SelectItem>
+                  <SelectItem value="pdf">PDFs</SelectItem>
+                  <SelectItem value="document">Documents</SelectItem>
+                  <SelectItem value="archive">Archives</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {(() => {
+            const q = searchQuery.trim().toLowerCase();
+            const filteredBatches = batches.filter((batch) =>
+              batch.files.some(
+                (f) =>
+                  (q === "" || f.filename.toLowerCase().includes(q)) &&
+                  matchesFilter(f.file_type, f.filename, typeFilter),
+              ),
+            );
+
+            if (batches.length === 0) {
+              return (
+                <Card className="p-12 text-center">
+                  <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-semibold mb-2">No uploads yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Start uploading files to see your history here
+                  </p>
+                  <Button onClick={() => navigate('/upload')}>Upload Files</Button>
+                </Card>
+              );
+            }
+
+            if (filteredBatches.length === 0) {
+              return (
+                <Card className="p-12 text-center">
+                  <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">No matches</h3>
+                  <p className="text-muted-foreground">
+                    Try a different search term or file type.
+                  </p>
+                </Card>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                {filteredBatches.map((batch) => {
+                  const isExpanded = expandedBatches.has(batch.batch_id);
+                  return (
                   <Card key={batch.batch_id} className="overflow-hidden hover:border-primary/30 transition-all">
                     <div 
                       className="p-6 cursor-pointer"
@@ -293,7 +397,8 @@ const History = () => {
                 );
               })}
             </div>
-          )}
+            );
+          })()}
         </div>
       </main>
 

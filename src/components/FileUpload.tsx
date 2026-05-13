@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Upload, Link2, Check, Loader2, CheckCircle, Clock } from "lucide-react";
+import { Upload, Link2, Check, Loader2, CheckCircle, Clock, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CircularProgress } from "@/components/ui/circular-progress";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
   const [currentShareToken, setCurrentShareToken] = useState("");
   const [isFinalized, setIsFinalized] = useState(false);
   const [expirationOption, setExpirationOption] = useState('1w');
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [totalBytes, setTotalBytes] = useState(0);
   const [sentBytes, setSentBytes] = useState(0);
@@ -91,6 +93,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     }
 
     setUploading(true);
+    setUploadError(null);
     setProgress(0);
     setUploadSpeed(0);
     setEstimatedTimeRemaining(null);
@@ -320,14 +323,23 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
       onUploadComplete?.();
     } catch (err) {
       console.error("Upload failed", err);
-      toast.error("Upload failed. Please try again.");
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Upload failed. Please check your connection and try again.";
+      setUploadError(message);
+      toast.error(message);
       setProgress(0);
       setSentBytes(0);
       setConfirmedBytes(0);
-      setTotalBytes(0);
     } finally {
       setUploading(false);
     }
+  };
+
+  const retryUpload = () => {
+    setUploadError(null);
+    void uploadFile();
   };
 
   const finalizeBatch = async () => {
@@ -348,11 +360,15 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
     }
   };
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(shareLink);
-    setCopied(true);
-    toast.success("Link copied to clipboard!");
-    setTimeout(() => setCopied(false), 2000);
+  const copyLink = async () => {
+    const ok = await copyToClipboard(shareLink);
+    if (ok) {
+      setCopied(true);
+      toast.success("Link copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      toast.error("Couldn't copy automatically. Long-press the link to copy.");
+    }
   };
 
   const addMoreFiles = () => {
@@ -521,6 +537,43 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
                 </div>
               </div>
             </div>
+          )}
+
+          {uploadError && !uploading && (
+            <Alert
+              role="alert"
+              className="border-destructive/40 bg-destructive/10 animate-fade-in-up"
+            >
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-destructive mb-1">Upload failed</p>
+                  <AlertDescription className="text-sm text-foreground/80 break-words">
+                    {uploadError}
+                  </AlertDescription>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={retryUpload}
+                      disabled={files.length === 0}
+                      className="gap-2"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Retry upload
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setUploadError(null)}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Alert>
           )}
 
           <Button
