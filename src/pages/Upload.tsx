@@ -9,6 +9,7 @@ import { FileText, Share2, ChevronDown, ChevronUp, File, Trash2 } from "lucide-r
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { copyToClipboard } from "@/lib/clipboard";
 
 interface FileInfo {
   id: string;
@@ -118,10 +119,11 @@ const Upload = () => {
     };
   }, [loadHistory]);
 
-  const copyLink = (token: string) => {
+  const copyLink = async (token: string) => {
     const link = `${window.location.origin}/download/${token}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Link copied to clipboard!");
+    const ok = await copyToClipboard(link);
+    if (ok) toast.success("Link copied to clipboard!");
+    else toast.error("Couldn't copy automatically. Long-press the link to copy.");
   };
 
   const deleteBatch = async (batchId: string, files: FileInfo[]) => {
