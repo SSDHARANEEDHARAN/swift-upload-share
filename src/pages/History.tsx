@@ -397,7 +397,8 @@ const History = () => {
                 );
               })}
             </div>
-          )}
+            );
+          })()}
         </div>
       </main>
 
