@@ -539,6 +539,43 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
             </div>
           )}
 
+          {uploadError && !uploading && (
+            <Alert
+              role="alert"
+              className="border-destructive/40 bg-destructive/10 animate-fade-in-up"
+            >
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-destructive mb-1">Upload failed</p>
+                  <AlertDescription className="text-sm text-foreground/80 break-words">
+                    {uploadError}
+                  </AlertDescription>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={retryUpload}
+                      disabled={files.length === 0}
+                      className="gap-2"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Retry upload
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setUploadError(null)}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Alert>
+          )}
+
           <Button
             onClick={uploadFile}
             disabled={files.length === 0 || uploading}
