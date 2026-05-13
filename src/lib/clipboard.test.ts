@@ -1,14 +1,9 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { copyToClipboard } from "@/lib/clipboard";
 
 describe("copyToClipboard", () => {
   const originalClipboard = (navigator as any).clipboard;
   const originalExec = (document as any).execCommand;
-
-  beforeEach(() => {
-    // jsdom doesn't ship execCommand — install a stub so we can spy on it
-    (document as any).execCommand = () => false;
-  });
 
   afterEach(() => {
     Object.defineProperty(navigator, "clipboard", {
@@ -20,13 +15,17 @@ describe("copyToClipboard", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses navigator.clipboard.writeText when available", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
+  const setClipboard = (value: any) => {
     Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
+      value,
       configurable: true,
       writable: true,
     });
+  };
+
+  it("uses navigator.clipboard.writeText when available", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    setClipboard({ writeText });
 
     const ok = await copyToClipboard("hello");
     expect(ok).toBe(true);
@@ -34,40 +33,28 @@ describe("copyToClipboard", () => {
   });
 
   it("falls back to execCommand when navigator.clipboard is missing", async () => {
-    Object.defineProperty(navigator, "clipboard", {
-      value: undefined,
-      configurable: true,
-      writable: true,
-    });
-    const execSpy = vi
-      .spyOn(document, "execCommand")
-      .mockReturnValue(true);
+    setClipboard(undefined);
+    const exec = vi.fn().mockReturnValue(true);
+    (document as any).execCommand = exec;
 
     const ok = await copyToClipboard("fallback-text");
     expect(ok).toBe(true);
-    expect(execSpy).toHaveBeenCalledWith("copy");
+    expect(exec).toHaveBeenCalledWith("copy");
   });
 
   it("falls back when navigator.clipboard.writeText rejects", async () => {
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText: vi.fn().mockRejectedValue(new Error("blocked")) },
-      configurable: true,
-      writable: true,
-    });
-    const execSpy = vi.spyOn(document, "execCommand").mockReturnValue(true);
+    setClipboard({ writeText: vi.fn().mockRejectedValue(new Error("blocked")) });
+    const exec = vi.fn().mockReturnValue(true);
+    (document as any).execCommand = exec;
 
     const ok = await copyToClipboard("retry");
     expect(ok).toBe(true);
-    expect(execSpy).toHaveBeenCalled();
+    expect(exec).toHaveBeenCalled();
   });
 
   it("returns false when both APIs fail", async () => {
-    Object.defineProperty(navigator, "clipboard", {
-      value: undefined,
-      configurable: true,
-      writable: true,
-    });
-    vi.spyOn(document, "execCommand").mockReturnValue(false);
+    setClipboard(undefined);
+    (document as any).execCommand = vi.fn().mockReturnValue(false);
 
     const ok = await copyToClipboard("nope");
     expect(ok).toBe(false);
