@@ -3,6 +3,12 @@ import { copyToClipboard } from "@/lib/clipboard";
 
 describe("copyToClipboard", () => {
   const originalClipboard = (navigator as any).clipboard;
+  const originalExec = (document as any).execCommand;
+
+  beforeEach(() => {
+    // jsdom doesn't ship execCommand — install a stub so we can spy on it
+    (document as any).execCommand = () => false;
+  });
 
   afterEach(() => {
     Object.defineProperty(navigator, "clipboard", {
@@ -10,6 +16,7 @@ describe("copyToClipboard", () => {
       configurable: true,
       writable: true,
     });
+    (document as any).execCommand = originalExec;
     vi.restoreAllMocks();
   });
 
