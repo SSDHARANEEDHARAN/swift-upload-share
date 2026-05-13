@@ -12,21 +12,6 @@ verify_jwt = true
 [functions.cleanup-expired-files]
 verify_jwt = false
 
-[functions.edit-image]
-verify_jwt = false
-
-[functions.upscale-image]
-verify_jwt = false
-
-[functions.recolor-image]
-verify_jwt = false
-
-[functions.image-to-video]
-verify_jwt = false
-
-[functions.image-to-3d]
-verify_jwt = false
-
 [functions.download-manifest]
 verify_jwt = false
 
