@@ -20,11 +20,13 @@ vi.mock("sonner", () => ({
 
 const renderAt = (token: string) =>
   render(
-    <MemoryRouter initialEntries={[`/download/${token}`]}>
-      <Routes>
-        <Route path="/download/:token" element={<Download />} />
-      </Routes>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[`/download/${token}`]}>
+        <Routes>
+          <Route path="/download/:token" element={<Download />} />
+        </Routes>
+      </MemoryRouter>
+    </ThemeProvider>,
   );
 
 const VALID = "a".repeat(32);
