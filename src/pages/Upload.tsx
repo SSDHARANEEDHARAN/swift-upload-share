@@ -120,7 +120,7 @@ const Upload = () => {
   }, [loadHistory]);
 
   const copyLink = async (token: string) => {
-    const link = `${window.location.origin}/download/${token}`;
+    const link = buildShareLink(token);
     const ok = await copyToClipboard(link);
     if (ok) toast.success("Link copied to clipboard!");
     else toast.error("Couldn't copy automatically. Long-press the link to copy.");
