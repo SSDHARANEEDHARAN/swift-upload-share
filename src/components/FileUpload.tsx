@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { copyToClipboard } from "@/lib/clipboard";
+import { buildShareLink } from "@/lib/share-url";
 import {
   Select,
   SelectContent,
