@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { copyToClipboard } from "@/lib/clipboard";
+import { buildShareLink } from "@/lib/share-url";
 
 interface FileInfo {
   id: string;
