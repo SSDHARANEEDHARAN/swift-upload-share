@@ -235,7 +235,7 @@ const Dashboard = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => {
-                                  navigator.clipboard.writeText(`${window.location.origin}/download/${file.share_token}`);
+                                  navigator.clipboard.writeText(buildShareLink(file.share_token));
                                   toast.success("Link copied!");
                                 }}
                               >
