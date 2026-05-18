@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { copyToClipboard } from "@/lib/clipboard";
+import { buildShareLink } from "@/lib/share-url";
 import {
   Select,
   SelectContent,
@@ -298,7 +299,7 @@ export const FileUpload = ({ user, onUploadComplete }: FileUploadProps) => {
       setCurrentBatchId(batchId);
       setCurrentShareToken(shareToken);
       
-      const link = `${window.location.origin}/download/${shareToken}`;
+      const link = buildShareLink(shareToken);
       setShareLink(link);
       
       // Send email notification if user is logged in

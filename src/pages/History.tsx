@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { copyToClipboard } from "@/lib/clipboard";
+import { buildShareLink } from "@/lib/share-url";
 
 type FileTypeFilter = "all" | "image" | "video" | "audio" | "pdf" | "document" | "archive" | "other";
 
@@ -139,7 +140,7 @@ const History = () => {
   };
 
   const copyLink = async (token: string) => {
-    const link = `${window.location.origin}/download/${token}`;
+    const link = buildShareLink(token);
     const ok = await copyToClipboard(link);
     if (ok) toast.success("Link copied to clipboard!");
     else toast.error("Couldn't copy automatically. Long-press the link to copy.");
