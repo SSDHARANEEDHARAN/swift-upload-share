@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { copyToClipboard } from "@/lib/clipboard";
+import { buildShareLink } from "@/lib/share-url";
 
 type FileTypeFilter = "all" | "image" | "video" | "audio" | "pdf" | "document" | "archive" | "other";
 
